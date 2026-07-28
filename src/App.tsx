@@ -1,107 +1,149 @@
-import { useState } from "react";
+import { ReactNode, useEffect } from "react";
+import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import {
+  Authenticated,
+  AuthLoading,
+  Unauthenticated,
+  useMutation,
+  useQuery,
+} from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { FunctionReturnType } from "convex/server";
+import { api } from "../convex/_generated/api";
+import SignIn from "./screens/SignIn";
+import Onboarding from "./screens/Onboarding";
+import DeskApp from "./desk/DeskApp";
+import ProApp from "./pro/ProApp";
+import { Avatar, BrandMark, Loading } from "./ui";
 
-// Static demo data standing in for one captured day at the club.
-// The real app replaces this with entries from the API (see docs/PRODUCT.md).
-const COURTS = ["Court 1", "Court 2", "Court 3", "Court 4"];
-const HOURS = ["8:00", "9:00", "10:00", "11:00", "12:00", "1:00", "2:00", "3:00", "4:00", "5:00"];
-
-type Entry = { court: string; hour: string; pro: string; label: string };
-
-const DAY: Entry[] = [
-  { court: "Court 1", hour: "8:00", pro: "Alex", label: "Alex — Private (J. Miller)" },
-  { court: "Court 1", hour: "9:00", pro: "Alex", label: "Alex — Private (S. Grant)" },
-  { court: "Court 2", hour: "9:00", pro: "Danny", label: "Danny — Junior clinic" },
-  { court: "Court 2", hour: "10:00", pro: "Danny", label: "Danny — Junior clinic" },
-  { court: "Court 3", hour: "10:00", pro: "Alex", label: "Alex — Cardio group" },
-  { court: "Court 1", hour: "11:00", pro: "Marta", label: "Marta — Private (K. Ellis)" },
-  { court: "Court 4", hour: "2:00", pro: "Danny", label: "Danny — Private (R. Hayes)" },
-  { court: "Court 2", hour: "3:00", pro: "Alex", label: "Alex — Private (T. Brooks)" },
-  { court: "Court 3", hour: "4:00", pro: "Marta", label: "Marta — Ladies drill" },
-];
-
-const ME = "Alex";
-
-function DeskView() {
-  return (
-    <section className="card">
-      <h2>Front desk — full day grid</h2>
-      <p className="sub">
-        Everything on today's paper page, in one glance. Capture happens here: photo import or quick manual entry.
-      </p>
-      <div className="grid">
-        <table>
-          <thead>
-            <tr>
-              <th>Time</th>
-              {COURTS.map((c) => (
-                <th key={c}>{c}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {HOURS.map((h) => (
-              <tr key={h}>
-                <th>{h}</th>
-                {COURTS.map((c) => {
-                  const entry = DAY.find((e) => e.court === c && e.hour === h);
-                  return (
-                    <td key={c}>
-                      {entry ? <span className={entry.pro === ME ? "slot" : "slot other"}>{entry.label}</span> : null}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
-function ProView() {
-  const mine = DAY.filter((e) => e.pro === ME);
-  return (
-    <section className="card">
-      <h2>My day — {ME}</h2>
-      <p className="sub">What a pro opens on their phone: just their hours, always current.</p>
-      <ul className="mine-list">
-        {mine.map((e) => (
-          <li key={e.court + e.hour}>
-            <span className="time">{e.hour}</span>
-            <span className="what">{e.label.replace(`${ME} — `, "")}</span>
-            <span className="where">{e.court}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+export type Session = Extract<
+  FunctionReturnType<typeof api.app.session>,
+  { authed: true }
+>;
+export type SessionWithClub = Session & {
+  membership: NonNullable<Session["membership"]>;
+  org: NonNullable<Session["org"]>;
+};
 
 export default function App() {
-  const [role, setRole] = useState<"desk" | "pro">("desk");
   return (
-    <div className="shell">
-      <header className="topbar">
-        <div className="brand">
-          <h1>Courtime</h1>
-          <span>the club's paper schedule, on every phone</span>
-        </div>
-        <nav className="role-toggle">
-          <button className={role === "desk" ? "active" : ""} onClick={() => setRole("desk")}>
-            Front desk
-          </button>
-          <button className={role === "pro" ? "active" : ""} onClick={() => setRole("pro")}>
-            Pro
-          </button>
-        </nav>
-      </header>
+    <>
+      <AuthLoading>
+        <Loading label="Starting Courtime" />
+      </AuthLoading>
+      <Unauthenticated>
+        <SignIn />
+      </Unauthenticated>
+      <Authenticated>
+        <SignedIn />
+      </Authenticated>
+    </>
+  );
+}
 
-      {role === "desk" ? <DeskView /> : <ProView />}
+function SignedIn() {
+  const session = useQuery(api.app.session);
+  const bootstrap = useMutation(api.app.bootstrap);
 
-      <p className="note">
-        Concept shell with demo data — the two surfaces of the product. See docs/SPEC.md for the full design.
-      </p>
-    </div>
+  // Pulls an invited coach into the club that invited them, by email.
+  useEffect(() => {
+    void bootstrap({});
+  }, [bootstrap]);
+
+  if (session === undefined) return <Loading label="Loading your club" />;
+  if (!session.authed) return <Loading />;
+  if (!session.membership || !session.org) return <Onboarding />;
+
+  const scoped = session as SessionWithClub;
+  const deskAllowed = scoped.membership.role !== "pro";
+
+  return (
+    <Routes>
+      <Route
+        path="/desk/*"
+        element={
+          deskAllowed ? <DeskApp session={scoped} /> : <Navigate to="/me" replace />
+        }
+      />
+      <Route
+        path="/me/*"
+        element={
+          <div className="shell">
+            <TopBar session={scoped} />
+            <ProApp />
+          </div>
+        }
+      />
+      <Route
+        path="*"
+        element={<Navigate to={deskAllowed ? "/desk" : "/me"} replace />}
+      />
+    </Routes>
+  );
+}
+
+export function TopBar({
+  session,
+  children,
+}: {
+  session: SessionWithClub;
+  children?: ReactNode;
+}) {
+  const { signOut } = useAuthActions();
+  const deskAllowed = session.membership.role !== "pro";
+
+  return (
+    <header className="topbar no-print">
+      <span className="brand">
+        <BrandMark />
+        Courtime
+      </span>
+
+      <nav className="topnav">
+        {deskAllowed ? (
+          <>
+            <NavLink to="/desk" end className={({ isActive }) => (isActive ? "active" : "")}>
+              Schedule
+            </NavLink>
+            <NavLink
+              to="/desk/import"
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              Import
+            </NavLink>
+            <NavLink
+              to="/desk/insights"
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              Insights
+            </NavLink>
+            <NavLink
+              to="/desk/settings"
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              Settings
+            </NavLink>
+          </>
+        ) : null}
+        <NavLink to="/me" end className={({ isActive }) => (isActive ? "active" : "")}>
+          My schedule
+        </NavLink>
+      </nav>
+
+      <div className="topbar-right">
+        {children}
+        <span className="tag org-tag">{session.org.name}</span>
+        <span className="who" title={session.user.email}>
+          <Avatar
+            name={session.membership.displayName}
+            color={session.membership.color}
+          />
+          <span className="who-name">{session.membership.displayName}</span>
+        </span>
+        <button className="btn ghost sm" onClick={() => void signOut()}>
+          Sign out
+        </button>
+      </div>
+    </header>
   );
 }

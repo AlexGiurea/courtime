@@ -59,6 +59,22 @@ in MVP.
 
 ## 4. Surfaces
 
+### 4.0 Onboarding (`/` when signed in without a club) — every club, not just Sea Island
+
+Courtime is built as a standard multi-tenant SaaS from the first commit; Sea Island is simply the
+first tenant. A new account lands in a three-step wizard, and nothing it asks for is permanent:
+
+1. **The club** — name, and the hours the day starts and ends (these become the first and last row
+   of the grid).
+2. **The courts** — "how many courts?" generates `Court 1…N`, each name editable inline, because
+   real clubs have a "Stadium" and a "Har-Tru 3".
+3. **The coaches** — name plus optional email per coach, added as chips. An email means they can
+   sign in and claim their own seat; no email means invite them later from Settings.
+
+One `createClub` mutation writes the org, courts and memberships in a single transaction, so a
+half-built club cannot exist. The creator becomes `admin`. New clubs start on the Pro plan so the
+whole product is visible; Settings switches tiers freely.
+
 ### 4.1 Desk app (`/desk`) — desktop/tablet browser
 - **Day grid:** time rows (configurable day window, 30-min granularity) × court columns. Mirrors
   the paper page visually.
@@ -97,8 +113,12 @@ in MVP.
     stored on the page doc.
   - Domain constraints in prompt: 30-min grid snapping, hour clinics, coachless courts allowed,
     known pro-name roster passed in for name normalization.
-  - **Verification pass:** second cheap call critiques the extraction — grid violations,
-    double-booked pros, court/time out of range → per-cell confidence flags.
+  - **Verification pass — deterministic, not a second model call.** Every failure that matters
+    here is decidable in code: a court that does not exist at this club, a time outside the club's
+    hours, a span off the 30-minute grid, two bookings claiming one court, a coach who is not on
+    the staff list, or handwriting the model itself marked illegible. Code is cheaper, faster, and
+    cannot hallucinate a verdict the way an LLM critic can. Each finding flags its row in the
+    review UI; none of it publishes on its own.
   - Provider-agnostic adapter so a Gemini bake-off is a config change, not a rewrite. (Planned
     bake-off: same 5 real pages through luna/sol/gemini, count wrong cells, pick default.)
 - **Review screen (the trust anchor):** photo on left, parsed grid on right, low-confidence cells
@@ -139,10 +159,16 @@ in MVP.
 - **Why this wins here specifically:** the product's core promise is "always current on every
   phone" — Convex subscriptions make every surface live with zero polling/websocket code, and the
   import queue's per-page status streams to the review UI for free.
-- **Auth model:** Convex Auth with **email OTP/magic-link** (no passwords — right call for pros and
-  front desk; nothing for the desk to support). Roles come from `memberships`, enforced inside
-  every query/mutation via a shared `requireMembership(ctx, orgId, minRole)` helper. Dev
-  convenience: seeded accounts.
+- **Auth model:** Convex Auth with the **Password** provider (email + password). Chosen over
+  email OTP because OTP needs a transactional email provider in the loop for every sign-in, which
+  adds a dependency and a failure mode to the one screen that must always work — and because a
+  shared front-desk machine signs in rarely and stays signed in. Roles come from `memberships`,
+  enforced inside every query and mutation via `requireMembership(ctx, minRole)`; the client is
+  never trusted for a role. Invited staff are stored as a membership with an email and no
+  `userId`; the first sign-in with that email claims the seat (`claimPendingInvite`).
+- **Demo access:** the sign-in screen seeds a demo club on demand (`seed.ensureDemo`, idempotent)
+  and offers one-click entry as the front desk (admin) or as a coach (pro), so the two points of
+  view can be seen without creating anything.
 - **Hosting:** frontend on Vercel (static Vite build; no Vercel API routes at all — Breakpoint's
   dual-router gotcha does not apply here). Convex cloud dev + prod deployments
   (`npx convex dev` / `npx convex deploy`). Free tier is sufficient for the pilot.
@@ -206,13 +232,22 @@ Convex tables (documents + indexes; times stored as minutes-from-midnight, 30-mi
 | Photo import | ✅ (fair monthly cap) | ✅ higher cap |
 | Unlimited pros, my-day PWA | ✅ | ✅ |
 | Basic change push alerts | ✅ | ✅ |
-| Smart notifications (digests, rules, client-facing) | — | ✅ |
-| AI agent (read-write chat over calendar, in palette) | — | ✅ |
-| Extended analytics (utilization heatmaps, pro load, trends — Breakpoint-style insight surface) | rudimentary strip only | ✅ |
-| Payroll/hours export (CSV per pro per period) | — | ✅ (likely #1 closer) |
+| Today-at-a-glance counts (bookings, coached hours, courts in use) | ✅ | ✅ |
+| Insights: court utilisation, coach load, busiest hours over any period | — | ✅ **built** |
+| Payroll/hours export (CSV per coach per period) | — | ✅ **built** (likely #1 closer) |
+| Smart notifications (digests, rules, client-facing) | — | roadmap |
+| AI assistant (read-write chat over the calendar, in the palette) | — | roadmap |
 
-MVP implements the FREE column only, plus `plan` on orgs and UI affordances (locked pro features
-visible but gated) so the upsell surface exists from day one. Stripe comes later.
+The MVP ships the whole Free column **plus two real Pro features** — insights and the hours
+export. That is deliberate: a paid tier made only of promises can't be demonstrated, and these two
+are pure functions of data already in the database, so they cost nothing external to run. The
+assistant and smart notifications stay on the roadmap and are not advertised inside the app as
+though they exist.
+
+Gating is enforced in **both** places: `schedule.range` refuses to return data when the club is on
+Free, and the Insights screen renders an explanation of what Pro adds instead of a dead end.
+`plan` lives on the org and an admin can switch it from Settings at any time — which doubles as
+the demo affordance for seeing both tiers. Stripe comes later.
 
 ## 8. Design system ("professional, never AI slop")
 

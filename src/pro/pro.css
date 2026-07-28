@@ -1,0 +1,198 @@
+/* Pro-side additions on top of the shared design system in src/styles.css.
+   Everything here is either a layout detail the base classes don't cover or a
+   phone-only refinement — no new colours, no new type scale. */
+
+.pro-shell {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
+}
+
+.pro-daynav .label {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  min-width: 0;
+}
+
+.pro-daynav .label .sub {
+  color: var(--faint);
+  font-weight: 500;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Square chevron buttons sized for a thumb, not a mouse. */
+.pro-icon-btn {
+  width: 36px;
+  height: 32px;
+  padding: 0;
+  flex: none;
+}
+
+.pro-summary {
+  margin: -4px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.pro-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 56px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------- session rows ---------- */
+
+.session .times {
+  flex: none;
+  white-space: nowrap;
+}
+
+.session .notes {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.session .trail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex: none;
+}
+
+/* The viewer's own booking inside the club-wide day. */
+.session.mine {
+  background: var(--accent-soft);
+}
+
+/* ---------- day and court groups ---------- */
+
+.daygroup h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.daygroup h3 .total {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.day-clear {
+  margin: 0;
+  padding: 11px 14px;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* ---------- empty + restricted states ---------- */
+
+.empty-line {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.empty-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.restricted-title {
+  margin: 0 0 5px;
+  font-size: 14px;
+}
+
+.restricted-copy {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+/* ---------- notifications / install card ---------- */
+
+.install-note .note-icon {
+  color: var(--accent);
+  flex: none;
+  margin-top: 1px;
+  display: flex;
+}
+
+.install-note .grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.install-steps {
+  margin: 0 0 10px;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+
+.note-dismiss {
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex: none;
+  display: flex;
+}
+
+.note-dismiss:hover {
+  color: var(--ink);
+}
+
+.pro-error {
+  margin: 0 0 9px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+/* ---------- change feed ---------- */
+
+.pro-alerts {
+  margin-top: 18px;
+}
+
+.pro-alerts .row {
+  align-items: flex-start;
+}
+
+.pro-alerts .row .grow {
+  display: flex;
+  flex-direction: column;
+}
+
+.pro-alerts .row .when {
+  color: var(--faint);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pro-alerts .tag {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* ---------- tabs ---------- */
+
+.pro-tabs svg {
+  display: block;
+}

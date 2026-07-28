@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courtime — The club's paper schedule book, on every phone.</title>
+<meta name="description" content="Courtime photographs the front desk's paper schedule, reads the grid, and puts a verified, always-current day on every pro's phone. Free for the whole club.">
+<meta name="theme-color" content="#0e7a5f">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<script>document.documentElement.className += ' js';</script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<span id="top-sentinel" aria-hidden="true"></span>
+
+<header class="nav" id="nav">
+  <div class="wrap nav__inner">
+    <a class="wordmark" href="#top" aria-label="Courtime — home">
+      <svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+        <rect x="1.6" y="3.6" width="22.8" height="18.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13 3.6V22.4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.6 1.9" opacity=".55"/>
+        <path d="M13 13V7.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M13 13l4.6 2.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <circle cx="13" cy="13" r="1.35" fill="currentColor"/>
+      </svg>
+      <span class="wordmark__text">Courtime</span>
+    </a>
+
+    <nav class="nav__links" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#views">Two views</a>
+      <a href="#paper">Paper</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+
+    <a class="btn btn--primary btn--sm" href="#" data-cta="demo-nav">See the live demo</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- ═══════════════════════ HERO ═══════════════════════ -->
+  <section class="hero" id="top">
+    <div class="wrap">
+      <div class="hero__copy">
+        <p class="eyebrow" data-reveal>For racquet clubs</p>
+        <h1 data-reveal style="--i:1">The club's paper schedule book,<br class="br-lg"> <span class="hl">on every phone.</span></h1>
+        <p class="lede" data-reveal style="--i:2">The front desk photographs the page. Courtime reads the grid, a person confirms it, and every pro opens their phone to the hours they're actually working — corrected the moment the desk changes them.</p>
+        <div class="hero__ctas" data-reveal style="--i:3">
+          <a class="btn btn--primary" href="#" data-cta="demo">See the live demo</a>
+          <a class="btn btn--ghost" href="#how" data-cta="how-it-works">How it works</a>
+        </div>
+        <p class="hero__note" data-reveal style="--i:4">Free tier is the complete calendar, forever. No card, no per-coach pricing.</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="stage" id="hero-stage" data-phase="idle">
+        <p class="visually-hidden">An illustration: a handwritten paper schedule page is photographed, checked cell by cell, and turns into a clean digital grid of courts and thirty-minute slots, which then appears on a coach's phone as their own day.</p>
+
+        <div class="stage__card" aria-hidden="true">
+          <svg class="sheet" viewBox="0 0 480 320" role="presentation" focusable="false">
+            <defs>
+              <clipPath id="ct-card"><rect x="6" y="6" width="468" height="308" rx="8"/></clipPath>
+              <linearGradient id="ct-scan" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0e7a5f" stop-opacity="0"/>
+                <stop offset="70%" stop-color="#0e7a5f" stop-opacity=".13"/>
+                <stop offset="100%" stop-color="#0e7a5f" stop-opacity=".55"/>
+              </linearGradient>
+            </defs>
+
+            <!-- card -->
+            <rect class="sheet__card" x="6" y="6" width="468" height="308" rx="8"/>
+
+            <!-- ░░ paper phase: wobbly ruled lines ░░ -->
+            <g class="sheet__rules">
+              <path d="M6.5,44.6 C120,43.2 250,45.8 473.5,43.9"/>
+              <path d="M6.5,74.3 C130,75.6 260,72.9 473.5,74.4"/>
+              <path d="M6.5,104.6 C140,103.1 250,106.2 473.5,104.1"/>
+              <path d="M6.5,134.2 C120,135.4 270,132.8 473.5,134.6"/>
+              <path d="M6.5,164.5 C150,163.2 260,166.1 473.5,164.2"/>
+              <path d="M6.5,194.3 C120,195.5 250,192.9 473.5,194.5"/>
+              <path d="M6.5,224.6 C140,223.4 270,226.2 473.5,224.1"/>
+              <path d="M6.5,254.2 C130,255.3 250,252.8 473.5,254.6"/>
+              <path d="M6.5,284.5 C150,283.3 260,286.1 473.5,284.2"/>
+              <path d="M62.4,10 C61.2,90 63.1,220 62.6,310"/>
+              <path d="M165.3,10 C166.4,90 164.2,220 165.1,310"/>
+              <path d="M268.4,10 C267.2,90 269.3,220 268.6,310"/>
+              <path d="M371.3,10 C372.4,90 370.2,220 371.1,310"/>
+            </g>
+
+            <!-- ░░ handwriting ░░ -->
+            <g class="sheet__hand">
+              <!-- Court 1, 8:00 -->
+              <path data-draw style="--d:0"   transform="translate(70,68) rotate(-1.4)" d="M0,0c0.6,-7.7 2.6,-10.9 3.1,-6c0.6,4.4 -0.6,6.8 1.8,6c1.2,-5.2 2.8,-4.6 3.4,-1.2c0.3,3.9 -1,8.2 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 2.7,-4.4c1.3,-4 3,-4.5 3.8,-1.8c0.3,2.2 -0.5,3 2.7,1.8c1,-6.1 2.3,-7 2.9,-2.7c0.3,3.4 -0.5,4.6 2,2.7c1.3,-4 2.9,-4.6 3.7,-1.8c0.3,2.2 -0.5,3 2.6,1.8c0.9,-5.4 2.1,-6.2 2.7,-2.4c0.3,3 -0.5,4 1.9,2.4c1.1,-5.1 2.6,-5.9 3.3,-2.3c0.3,2.8 -0.5,3.9 2.3,2.3m2.7,-0.3c1.1,-4.8 2.5,-5.6 3.2,-2.2c0.3,2.7 -0.5,3.6 2.2,2.2c1.6,0.4 3,-1.8 5.9,-4.4"/>
+              <path data-draw style="--d:1"   transform="translate(70,84) rotate(-.8) scale(.86)" d="M0,0c1.2,-4.8 2.8,-4.6 3.4,-1.2c0.3,4.9 -1,7.6 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.1,-4.4c1.2,-5.3 2.7,-6.1 3.4,-2.4c0.3,2.9 -0.5,4 2.4,2.4c1.3,-4.6 3,-5.3 3.7,-2.1c0.3,2.5 -0.5,3.5 2.6,2.1c0.8,-7.1 2.2,-9.5 2.9,-4.7c0.4,3.2 -0.9,4.7 2,4.7c1.2,-4.3 2.6,-5 3.3,-1.9c0.3,2.4 -0.5,3.2 2.3,1.9c1.2,-4.4 2.8,-5.1 3.6,-2c0.3,2.4 -0.5,3.3 2.5,2c1.6,0.4 3,-1.8 4.9,-4.8"/>
+
+              <!-- Court 3, 8:30 -->
+              <path data-draw style="--d:2"   transform="translate(276,98) rotate(1.1)" d="M0,0c1.2,-7.9 2.5,-11.3 2.8,-6.2c0.6,4.5 -0.6,7 1,6.2c1.2,-4.1 2.7,-4.7 3.4,-1.8c0.3,2.3 -0.5,3.1 2.4,1.8c1.1,-6 2.5,-7 3.1,-2.7c0.3,3.3 -0.5,4.5 2.2,2.7m3.6,-0.2c1.2,-3.7 2.8,-4.2 3.4,-1.7c0.3,2 -0.5,2.8 2.4,1.7c1,-5.7 2.3,-6.6 2.9,-2.6c0.3,3.2 -0.5,4.3 2,2.6c1.2,-5.6 2.8,-4.6 3.2,-1.2c0.3,3.9 -1,8 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.1,-4.4c1.3,-4.8 2.9,-5.5 3.7,-2.2c0.3,2.6 -0.5,3.6 2.6,2.2c1.6,0.4 3,-1.8 5.6,-5.5"/>
+              <path data-draw style="--d:3"   transform="translate(276,114) rotate(.5) scale(.8)" d="M0,0c0.8,-7 1.9,-10 3.1,-5.5c0.6,4 -0.6,6.2 1.7,5.5c1.2,-6.1 2.9,-7 3.6,-2.7c0.3,3.3 -0.5,4.6 2.5,2.7c1.1,-5.9 2.5,-6.8 3.1,-2.7c0.3,3.3 -0.5,4.4 2.2,2.7c1.2,-3.7 2.7,-4.2 3.4,-1.7c0.3,2 -0.5,2.8 2.4,1.7c1.2,-5.7 2.8,-4.6 3.7,-1.2c0.3,4.9 -1,6.8 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.3,-4.4c1.6,0.4 3,-1.8 5,-5.4"/>
+              <!-- continuation arrow -->
+              <path class="sheet__arrow" data-draw style="--d:4" transform="translate(452,72)" d="M0,0c-.9,7 .7,14 .1,21m0,0l-3.4,-5.2m3.4,5.2l3.6,-5"/>
+
+              <!-- Court 2, 9:00 -->
+              <path data-draw style="--d:5"   transform="translate(173,128) rotate(-1.7)" d="M0,0c0.7,-8.5 1.9,-12.1 2.9,-6.7c0.6,4.8 -0.6,7.5 1.7,6.7c1.4,-5.9 3.2,-6.8 4.1,-2.7c0.3,3.2 -0.5,4.4 2.8,2.7c1.4,-5 3.3,-5.7 4.1,-2.2c0.3,2.7 -0.5,3.7 2.9,2.2c1.2,-4.9 2.8,-4.6 3.6,-1.2c0.3,3.4 -1,7.7 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.2,-4.4c1,-3.8 2.3,-4.4 2.9,-1.7c0.3,2.1 -0.5,2.9 2,1.7c1.4,-5.7 3.3,-6.6 4.1,-2.6c0.3,3.2 -0.5,4.3 2.9,2.6c1.4,-5 3.3,-5.8 4.1,-2.3c0.3,2.8 -0.5,3.8 2.9,2.3c1,-4.4 2.2,-5 2.7,-2c0.3,2.4 -0.5,3.3 1.9,2c1.6,0.4 3,-1.8 5.9,-5.5"/>
+              <path data-draw style="--d:6"   transform="translate(173,144) rotate(-1) scale(.74)" d="M0,0c1.1,-6.5 2,-9.3 2.5,-5.1c0.6,3.7 -0.6,5.7 1.2,5.1c1,-5.7 2.4,-6.5 3,-2.6c0.3,3.1 -0.5,4.3 2.1,2.6c1.3,-4.8 2.9,-5.5 3.7,-2.2c0.3,2.6 -0.5,3.6 2.6,2.2c1.2,-5.4 2.9,-6.2 3.6,-2.4c0.3,3 -0.5,4.1 2.5,2.4c1.3,-5.6 3.1,-6.5 3.9,-2.5c0.3,3.1 -0.5,4.2 2.7,2.5c1.6,0.4 3,-1.8 5.9,-4.6"/>
+
+              <!-- Court 4, 8:00 -->
+              <path data-draw style="--d:7"   transform="translate(379,68) rotate(1.5)" d="M0,0c1,-5.4 2.4,-6.2 3,-2.4c0.3,3 -0.5,4 2.1,2.4c1,-5.5 2.3,-6.4 2.9,-2.5c0.3,3 -0.5,4.2 2.1,2.5c1,-5.1 2.3,-5.9 2.8,-2.3c0.3,2.8 -0.5,3.8 2,2.3c1.3,-4.4 3,-5 3.8,-2c0.3,2.4 -0.5,3.3 2.6,2c0.9,-5.1 2.1,-5.8 2.6,-2.3c0.3,2.8 -0.5,3.8 1.8,2.3c1,-5.5 2.2,-6.4 2.8,-2.5c0.3,3 -0.5,4.1 2,2.5c1,-5 2.3,-5.7 2.8,-2.2c0.3,2.7 -0.5,3.7 2,2.2c1.3,-3.7 2.9,-4.2 3.7,-1.7c0.3,2 -0.5,2.8 2.6,1.7c1.6,0.4 3,-1.8 4.9,-5.4"/>
+              <path data-draw style="--d:8"   transform="translate(379,84) rotate(.9) scale(.82)" d="M0,0c1.2,-5.3 2.8,-4.6 3.7,-1.2c0.3,4.9 -1,7 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.4,-4.4c1.4,-4.7 3.2,-5.4 4,-2.1c0.3,2.6 -0.5,3.5 2.8,2.1m2.7,0.1c1.2,-5.4 2.8,-6.2 3.4,-2.4c0.3,3 -0.5,4.1 2.4,2.4c1.4,-4.5 3.2,-5.1 3.9,-2c0.3,2.5 -0.5,3.3 2.8,2c1.6,0.4 3,-1.8 5.1,-5"/>
+
+              <!-- Court 1, 10:30 -->
+              <path data-draw style="--d:9"   transform="translate(70,218) rotate(-1.2)" d="M0,0c1,-4.4 2.3,-5.1 2.9,-2c0.3,2.4 -0.5,3.3 2,2c1,-5.1 2.2,-5.8 2.7,-2.3c0.3,2.8 -0.5,3.8 1.9,2.3c1,-5.5 2.3,-6.3 2.9,-2.5c0.3,3 -0.5,4.1 2,2.5c1,-4.6 2.3,-5.3 2.9,-2.1c0.3,2.5 -0.5,3.4 2,2.1c1.1,-5.2 2.5,-6 3.2,-2.3c0.3,2.9 -0.5,3.9 2.2,2.3c1.1,-6.2 2.5,-7.1 3.2,-2.8c0.3,3.4 -0.5,4.6 2.2,2.8c1.1,-5.9 2.4,-6.7 3,-2.6c0.3,3.2 -0.5,4.4 2.1,2.6c0.8,-7.4 2.2,-9.8 2.8,-4.9c0.4,3.3 -0.9,4.9 1.8,4.9c1.3,-4.5 3.1,-5.2 3.8,-2c0.3,2.5 -0.5,3.4 2.7,2c1.6,0.4 3,-1.8 5.7,-5"/>
+              <path data-draw style="--d:10"  transform="translate(70,234) rotate(-.4) scale(.78)" d="M0,0c1.1,-6.5 1.9,-9.2 2.5,-5.1c0.6,3.7 -0.6,5.7 1,5.1c1,-5.1 2.2,-5.8 2.8,-2.3c0.3,2.8 -0.5,3.8 1.9,2.3c1.4,-5.2 3.1,-6 3.9,-2.3c0.3,2.8 -0.5,3.9 2.7,2.3c1.1,-4.9 2.5,-5.7 3.1,-2.2c0.3,2.7 -0.5,3.7 2.2,2.2c1.3,-4.3 2.9,-4.9 3.6,-1.9c0.3,2.4 -0.5,3.2 2.5,1.9c1.6,0.4 3,-1.8 4.8,-5.3"/>
+
+              <!-- Court 2, 11:00 -->
+              <path data-draw style="--d:11"  transform="translate(173,248) rotate(1.8)" d="M0,0c1.1,-7 1.9,-10 3,-5.5c0.6,4 -0.6,6.2 1.6,5.5c1.4,-4.3 3.2,-4.9 4.1,-1.9c0.3,2.4 -0.5,3.2 2.8,1.9c1.2,-4.9 2.8,-4.6 3.2,-1.2c0.3,3.3 -1,6.4 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3,-4.4c1.2,-5.2 2.8,-6 3.5,-2.3c0.3,2.9 -0.5,3.9 2.4,2.3c1.4,-5.3 3.2,-6.1 4,-2.4c0.3,2.9 -0.5,4 2.8,2.4c1.5,-5.2 3.3,-6 4.2,-2.4c0.3,2.9 -0.5,3.9 2.9,2.4c1,-6.2 2.2,-7.1 2.8,-2.8c0.3,3.4 -0.5,4.6 2,2.8c1.6,0.4 3,-1.8 4.5,-5.7"/>
+              <path data-draw style="--d:12"  transform="translate(173,264) rotate(1.2) scale(.8)" d="M0,0c1.2,-4.9 2.8,-4.6 3.4,-1.2c0.3,4.8 -1,8 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.3,-4.4c1.4,-5.2 3.3,-6 4.1,-2.3c0.3,2.9 -0.5,3.9 2.9,2.3c1.1,-3.6 2.4,-4.2 3.1,-1.6c0.3,2 -0.5,2.7 2.1,1.6c1.2,-4.8 2.7,-5.5 3.3,-2.1c0.3,2.6 -0.5,3.6 2.3,2.1c1.6,0.4 3,-1.8 5.6,-5.5"/>
+
+              <!-- time gutter scrawls -->
+              <path data-draw style="--d:0" transform="translate(16,64) scale(.72)" d="M0,0c0.5,-8.5 2,-12.1 3.2,-6.7c0.6,4.8 -0.6,7.5 1.1,6.7c0.8,-7.5 2.2,-10.1 3,-5c0.4,3.4 -0.9,5 1.9,5c1,-5.2 2.3,-6 2.9,-2.4c0.3,2.9 -0.5,3.9 2,2.4c1.2,-4.4 2.8,-4.6 3.6,-1.2c0.3,4.8 -1,8.1 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 2.9,-4.4c1.4,-4.7 3.3,-5.4 4.1,-2.1c0.3,2.6 -0.5,3.5 2.8,2.1c1.6,0.4 3,-1.8 5.8,-5.2"/>
+              <path data-draw style="--d:3" transform="translate(16,124) scale(.72)" d="M0,0c1.2,-4.7 2.8,-4.6 3.7,-1.2c0.3,5 -1,6.8 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 3.5,-4.4c1.2,-5.6 2.8,-4.6 3.5,-1.2c0.3,3.5 -1,7.7 -2.4,5.4c-1.1,-0.8 -0.2,-3.4 2.6,-4.4c0.8,-7.8 2.2,-10.4 2.9,-5.2c0.4,3.5 -0.9,5.2 2,5.2c0.8,-6.4 2.2,-8.6 3.1,-4.3c0.4,2.9 -0.9,4.3 2.1,4.3c1.6,0.4 3,-1.8 5.1,-4.2"/>
+              <path data-draw style="--d:6" transform="translate(16,184) scale(.72)" d="M0,0c0.9,-6.8 2.1,-9.7 2.7,-5.4c0.6,3.9 -0.6,6 1.2,5.4c0.8,-7.7 2.2,-10.3 2.7,-5.1c0.4,3.5 -0.9,5.1 2.2,5.1c1,-5.8 2.2,-6.7 2.8,-2.6c0.3,3.2 -0.5,4.4 1.9,2.6c1.1,-4 2.5,-4.6 3.1,-1.8c0.3,2.2 -0.5,3 2.2,1.8c1.6,0.4 3,-1.8 4.9,-4.7"/>
+              <path data-draw style="--d:9" transform="translate(16,244) scale(.72)" d="M0,0c1.3,-5.1 3.1,-5.9 3.9,-2.3c0.3,2.8 -0.5,3.8 2.7,2.3c1.1,-4 2.6,-4.6 3.3,-1.8c0.3,2.2 -0.5,3 2.3,1.8c1.1,-3.7 2.4,-4.2 3,-1.6c0.3,2 -0.5,2.7 2.1,1.6c1.6,0.4 3,-1.8 5,-4.9"/>
+            </g>
+
+            <!-- ░░ scan pass ░░ -->
+            <g clip-path="url(#ct-card)">
+              <rect class="sheet__beam" x="6" y="-46" width="468" height="46" fill="url(#ct-scan)"/>
+            </g>
+            <g class="sheet__flag">
+              <rect x="167" y="106" width="99" height="56" rx="5"/>
+              <circle class="sheet__flagdot" cx="262" cy="110" r="4.4"/>
+            </g>
+            <g class="sheet__brackets">
+              <path d="M18,32V20h12M462,32V20h-12M18,288v12h12M462,288v12h-12"/>
+            </g>
+
+            <!-- ░░ digital phase ░░ -->
+            <g class="sheet__grid">
+              <path d="M6,44.5H474M6,74.5H474M6,104.5H474M6,134.5H474M6,164.5H474M6,194.5H474M6,224.5H474M6,254.5H474M6,284.5H474"/>
+              <path d="M62.5,44V314M165.5,6V314M268.5,6V314M371.5,6V314"/>
+              <path class="sheet__gridhead" d="M6,44.5H474"/>
+            </g>
+
+            <g class="sheet__labels">
+              <text class="sheet__court" x="113.5" y="30">Court 1</text>
+              <text class="sheet__court" x="216.5" y="30">Court 2</text>
+              <text class="sheet__court" x="319.5" y="30">Court 3</text>
+              <text class="sheet__court" x="422.5" y="30">Court 4</text>
+              <text class="sheet__time" x="54" y="60">8:00</text>
+              <text class="sheet__time" x="54" y="90">8:30</text>
+              <text class="sheet__time" x="54" y="120">9:00</text>
+              <text class="sheet__time" x="54" y="150">9:30</text>
+              <text class="sheet__time" x="54" y="180">10:00</text>
+              <text class="sheet__time" x="54" y="210">10:30</text>
+              <text class="sheet__time" x="54" y="240">11:00</text>
+              <text class="sheet__time" x="54" y="270">11:30</text>
+              <text class="sheet__time" x="54" y="300">12:00</text>
+            </g>
+
+            <g class="sheet__chips">
+              <g transform="translate(66,48)"><g class="schip" style="--d:0">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Private</text>
+                <text class="schip__m" x="10" y="35">Alex · J. Miller</text>
+              </g></g>
+              <g transform="translate(272,78)"><g class="schip" style="--d:1">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Junior clinic</text>
+                <text class="schip__m" x="10" y="35">Marta · 6 kids</text>
+              </g></g>
+              <g transform="translate(169,108)"><g class="schip" style="--d:2">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Cardio group</text>
+                <text class="schip__m" x="10" y="35">Danny</text>
+              </g></g>
+              <g transform="translate(375,48)"><g class="schip" style="--d:3">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Private</text>
+                <text class="schip__m" x="10" y="35">Alex · R. Hayes</text>
+              </g></g>
+              <g transform="translate(66,198)"><g class="schip" style="--d:4">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Ladies' 3.0 drill</text>
+                <text class="schip__m" x="10" y="35">Danny</text>
+              </g></g>
+              <g transform="translate(169,228)"><g class="schip" style="--d:5">
+                <rect width="95" height="52" rx="5"/><rect class="schip__bar" width="2.6" height="52" rx="1.3"/>
+                <text class="schip__t" x="10" y="21">Private</text>
+                <text class="schip__m" x="10" y="35">Marta · T. Cole</text>
+              </g></g>
+            </g>
+          </svg>
+
+          <span class="stage__badge stage__badge--paper">Tuesday, March 12 · front desk</span>
+          <span class="stage__badge stage__badge--live"><span class="live__dot"></span>Verified and published</span>
+        </div>
+
+        <div class="stage__phone" aria-hidden="true">
+          <div class="phone phone--sm">
+            <div class="phone__body">
+              <span class="phone__speaker"></span>
+              <div class="phone__screen">
+                <p class="phone__eyebrow">Danny</p>
+                <p class="phone__title">My day</p>
+                <p class="phone__date">Tuesday, March 12</p>
+                <ul class="phone__list">
+                  <li><span class="tnum">9:00</span><span><b>Junior clinic</b><i>Court 1</i></span></li>
+                  <li><span class="tnum">11:00</span><span><b>Private (S. Rowe)</b><i>Court 2</i></span></li>
+                  <li><span class="tnum">3:00</span><span><b>Cardio group</b><i>Court 2</i></span></li>
+                </ul>
+              </div>
+              <div class="toast">
+                <span class="toast__mark" aria-hidden="true"></span>
+                <span><b>Schedule change</b>Your 3:00 moved to Court 2.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="replay" type="button" data-replay>
+          <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M13.5 8a5.5 5.5 0 1 1-1.7-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M13 1.4V4.6H9.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Replay
+        </button>
+      </div>
+
+      <p class="stage__caption" data-reveal>Paper in. Verified grid out. Every phone current, in about ninety seconds.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ PROBLEM ═══════════════════════ -->
+  <section class="section section--dark" id="problem">
+    <div class="wrap">
+      <div class="split">
+        <div class="split__aside">
+          <p class="eyebrow" data-reveal>The problem</p>
+          <h2 class="h2" data-reveal style="--i:1">One copy.<br>One place.<br>In handwriting.</h2>
+        </div>
+        <div class="split__main prose">
+          <p data-reveal>Walk into most racquet clubs and the entire operation — every private, every clinic, every court hour for the next four months — lives in one book at the front desk, in pencil. It works, and it has worked for thirty years, right up to the moment someone who isn't standing at that desk needs to know something.</p>
+          <p data-reveal style="--i:1">So they call. A pro halfway to the club asks what time he's on. A member asks whether four o'clock is open. The desk spends its morning answering a question it already answered, and the answer is always two feet away from the person who needs it.</p>
+          <p data-reveal style="--i:2">When a booking moves, the desk erases and rewrites, and the page is immediately correct. The pro is not. He finds out at the gate, or from the member, or after he's already driven in. And if the page goes missing, or a cup of coffee lands on Tuesday, there is no second copy of anything.</p>
+        </div>
+      </div>
+
+      <ul class="facts" data-reveal>
+        <li><span class="facts__k">One copy</span><span class="facts__v">No backup, no history, no second place to look.</span></li>
+        <li><span class="facts__k">Tens of calls a day</span><span class="facts__v">Most of them are someone asking what time they're on court.</span></li>
+        <li><span class="facts__k">No remote view</span><span class="facts__v">The director can't see today without walking to the desk.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ HOW IT WORKS ═══════════════════════ -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <header class="shead">
+        <p class="eyebrow" data-reveal>How it works</p>
+        <h2 class="h2" data-reveal style="--i:1">Three steps, and the book is on every phone.</h2>
+        <p class="shead__sub lede" data-reveal style="--i:2">Nobody at the club learns new software. The desk keeps writing the page exactly the way it always has.</p>
+      </header>
+
+      <ol class="steps">
+        <li class="step" data-reveal>
+          <div class="step__art">
+            <svg viewBox="0 0 220 150" role="img" aria-label="A phone photographing a handwritten schedule page, with viewfinder brackets around it.">
+              <g class="art">
+                <g transform="rotate(-4 84 78)">
+                  <rect class="art__paper" x="24" y="26" width="120" height="104" rx="5"/>
+                  <path class="art__rule" d="M32,48h104M32,64h104M32,80h104M32,96h104M32,112h104"/>
+                  <path class="art__ink" d="M40,44c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s6-7 9-4"/>
+                  <path class="art__ink" d="M40,76c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s7-6 10-3"/>
+                  <path class="art__ink" d="M78,92c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s6-6 9-3"/>
+                  <path class="art__ink" d="M96,60c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s6-6 9-3"/>
+                </g>
+                <path class="art__bracket" d="M18,42V24h18M166,42V24h-18M18,124v18h18M166,124v18h-18"/>
+                <g transform="translate(150,44)">
+                  <rect class="art__device" x="0" y="0" width="52" height="86" rx="9"/>
+                  <rect class="art__screen" x="6" y="12" width="40" height="56" rx="3"/>
+                  <circle class="art__lens" cx="26" cy="40" r="9"/>
+                  <circle class="art__shutter" cx="26" cy="77" r="4"/>
+                  <path class="art__speaker" d="M20,7h12"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p class="step__n">Step one</p>
+          <h3 class="step__h">Photograph the page</h3>
+          <p class="step__p">At the end of the morning the desk holds up a phone and takes one picture of the page. That is the entire capture step — no typing, no double entry, no new habit for anyone to remember at four o'clock on a Saturday.</p>
+        </li>
+
+        <li class="step" data-reveal style="--i:1">
+          <div class="step__art">
+            <svg viewBox="0 0 220 150" role="img" aria-label="The photographed page beside a parsed digital grid, with one uncertain cell flagged for review and a confirm control.">
+              <g class="art">
+                <rect class="art__paper" x="14" y="26" width="82" height="98" rx="5"/>
+                <path class="art__rule" d="M14,50h82M14,70h82M14,90h82M14,110h82"/>
+                <path class="art__ink" d="M24,44c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s7-6 10-3"/>
+                <path class="art__ink" d="M24,84c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s6-6 9-3"/>
+                <path class="art__ink" d="M58,64c2-6 5-8 6-4s-2,7 0,7s5-6 7-4s0,6 3,5s6-6 9-3"/>
+                <path class="art__arrowhint" d="M108,75h14m0,0l-4,-4m4,4l-4,4"/>
+                <rect class="art__paper" x="132" y="26" width="74" height="98" rx="5"/>
+                <path class="art__grid" d="M132,46h74M132,66h74M132,86h74M132,106h74M156,26v98M181,26v98"/>
+                <rect class="art__chip" x="135" y="49" width="18" height="14" rx="2.5"/>
+                <rect class="art__chip" x="159" y="69" width="18" height="14" rx="2.5"/>
+                <rect class="art__chip art__chip--flag" x="184" y="89" width="18" height="14" rx="2.5"/>
+                <circle class="art__flagdot" cx="203" cy="88" r="3.6"/>
+                <g transform="translate(150,126)">
+                  <rect class="art__confirm" x="0" y="0" width="56" height="18" rx="9"/>
+                  <path class="art__check" d="M9,9.4l3.4,3.4L19,5.6"/>
+                  <path class="art__confirmline" d="M26,9.2h22"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p class="step__n">Step two</p>
+          <h3 class="step__h">Verify in seconds</h3>
+          <p class="step__p">Courtime reads the grid — courts, thirty-minute slots, coach names, the arrows that mean a booking runs long — and lays the parsed schedule beside your photo. Anything it is unsure of comes back flagged. You tap the flagged cells, fix what's wrong, and confirm. Nothing reaches a single phone before a person says it's right.</p>
+        </li>
+
+        <li class="step" data-reveal style="--i:2">
+          <div class="step__art">
+            <svg viewBox="0 0 220 150" role="img" aria-label="A published schedule syncing outward to three coaches' phones, one of which shows a change notification.">
+              <g class="art">
+                <rect class="art__paper" x="82" y="16" width="56" height="44" rx="5"/>
+                <path class="art__grid" d="M82,30h56M82,44h56M100,16v44M120,16v44"/>
+                <rect class="art__chip" x="85" y="33" width="13" height="8" rx="2"/>
+                <rect class="art__chip" x="122" y="19" width="13" height="8" rx="2"/>
+                <path class="art__wave" d="M62,74c-6-16 0-34 14-44"/>
+                <path class="art__wave" d="M110,74V64"/>
+                <path class="art__wave" d="M158,74c6-16 0-34-14-44"/>
+                <g transform="translate(24,78)"><rect class="art__device" x="0" y="0" width="44" height="62" rx="8"/><path class="art__row" d="M9,16h26M9,26h20M9,36h26M9,46h16"/><path class="art__speaker" d="M16,7h12"/></g>
+                <g transform="translate(88,78)"><rect class="art__device" x="0" y="0" width="44" height="62" rx="8"/><path class="art__row" d="M9,16h26M9,26h20M9,36h26M9,46h16"/><path class="art__speaker" d="M16,7h12"/></g>
+                <g transform="translate(152,78)">
+                  <rect class="art__device" x="0" y="0" width="44" height="62" rx="8"/>
+                  <path class="art__row" d="M9,16h26M9,26h20M9,36h26M9,46h16"/>
+                  <path class="art__speaker" d="M16,7h12"/>
+                  <rect class="art__badge" x="26" y="-6" width="26" height="16" rx="8"/>
+                  <path class="art__badgeline" d="M32,2h14"/>
+                </g>
+              </g>
+            </svg>
+          </div>
+          <p class="step__n">Step three</p>
+          <h3 class="step__h">Every phone updates</h3>
+          <p class="step__p">The moment you confirm, it's on every phone that matters. Each coach sees only their own hours — not the club's day, theirs. When something moves later, the phone that cares about it buzzes: <span class="quiet">Your 3:00 moved to Court 2.</span></p>
+        </li>
+      </ol>
+
+      <aside class="trust" data-reveal>
+        <p class="trust__k">100% verified, not 100% AI.</p>
+        <p class="trust__v">The model does the typing. A person does the vouching. That review step is the product, and it never gets automated away — no page has ever published itself, and none ever will.</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ TWO VIEWS ═══════════════════════ -->
+  <section class="section section--wash" id="views">
+    <div class="wrap">
+      <header class="shead">
+        <p class="eyebrow" data-reveal>The two surfaces</p>
+        <h2 class="h2" data-reveal style="--i:1">Two views, one schedule.</h2>
+        <p class="shead__sub lede" data-reveal style="--i:2">The desk gets a dense grid shaped like the page it already knows. The pro gets four lines and a notification. Same data, one second apart.</p>
+      </header>
+
+      <div class="views" id="views-demo">
+        <div class="views__desk" data-reveal>
+          <div class="desk">
+            <div class="desk__bar">
+              <div class="desk__nav">
+                <button class="iconbtn" type="button" aria-label="Previous day" tabindex="-1">
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M7.5 1.5L3 6l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <span class="desk__date">Tuesday, March 12</span>
+                <button class="iconbtn" type="button" aria-label="Next day" tabindex="-1">
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.5 1.5L9 6l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="desk__meta">
+                <span class="live"><span class="live__dot"></span>Live</span>
+                <span class="kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+              </div>
+            </div>
+
+            <div class="desk__grid">
+              <div class="deskcol deskcol--time">
+                <div class="deskhead">&nbsp;</div>
+                <div class="deskrow tnum">1:00</div><div class="deskrow tnum">1:30</div>
+                <div class="deskrow tnum">2:00</div><div class="deskrow tnum">2:30</div>
+                <div class="deskrow tnum">3:00</div><div class="deskrow tnum">3:30</div>
+                <div class="deskrow tnum">4:00</div><div class="deskrow tnum">4:30</div>
+                <div class="deskrow tnum">5:00</div>
+              </div>
+
+              <div class="deskcol" data-col="1">
+                <div class="deskhead">Court 1</div>
+                <div class="deskbody">
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div>
+                  <div class="ent" style="--r:0;--s:2"><b>Private (J. Miller)</b><i>Alex</i></div>
+                  <div class="ent" style="--r:5;--s:2"><b>Ladies' 3.0 drill</b><i>Alex</i></div>
+                </div>
+              </div>
+
+              <div class="deskcol" data-col="2">
+                <div class="deskhead">Court 2</div>
+                <div class="deskbody">
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div>
+                  <div class="ent" style="--r:1;--s:2"><b>Private (R. Hayes)</b><i>Marta</i></div>
+                  <div class="ent" style="--r:6;--s:2"><b>Junior clinic</b><i>Marta · 6 kids</i></div>
+                </div>
+              </div>
+
+              <div class="deskcol" data-col="3">
+                <div class="deskhead">Court 3</div>
+                <div class="deskbody">
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div>
+                  <div class="ent ent--quiet" style="--r:0;--s:1"><b>Maintenance</b></div>
+                  <div class="ent ent--move" id="move-chip" style="--r:4;--s:2"><b>Cardio group</b><i>Danny</i></div>
+                </div>
+              </div>
+
+              <div class="deskcol" data-col="4">
+                <div class="deskhead">Court 4</div>
+                <div class="deskbody">
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div><div class="deskrow"></div>
+                  <div class="deskrow"></div>
+                  <div class="ent" style="--r:0;--s:2"><b>High school team</b><i>Danny</i></div>
+                  <div class="ent ent--quiet" style="--r:3;--s:2"><b>Round robin — open</b></div>
+                </div>
+              </div>
+            </div>
+            <div class="desk__foot"><span>8:00 AM – 5:00 PM · 4 courts</span><span>Type in a cell to book. Drag to extend.</span></div>
+          </div>
+          <p class="views__cap"><b>The desk keeps the grid.</b> Courts across, thirty-minute rows down — the same shape as the page in the book. Type in a cell to create an entry, drag to extend it, <span class="kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span> to jump to any date. Built for someone who can already write the book faster than you can say the date out loud.</p>
+        </div>
+
+        <div class="views__pro" data-reveal style="--i:1">
+          <div class="phone phone--lg">
+            <div class="phone__body">
+              <span class="phone__speaker"></span>
+              <div class="phone__screen">
+                <p class="phone__eyebrow">Danny · Sea Island</p>
+                <p class="phone__title">My day</p>
+                <p class="phone__date">Tuesday, March 12</p>
+                <ul class="phone__list">
+                  <li><span class="tnum">9:00 AM</span><span><b>Junior clinic</b><i>Court 1</i></span></li>
+                  <li><span class="tnum">11:00 AM</span><span><b>Private (S. Rowe)</b><i>Court 2</i></span></li>
+                  <li><span class="tnum">1:00 PM</span><span><b>High school team</b><i>Court 4</i></span></li>
+                  <li id="pro-row"><span class="tnum">3:00 PM</span><span><b>Cardio group</b><i data-court>Court 3</i></span></li>
+                </ul>
+                <p class="phone__foot">4 hours on court · updated just now</p>
+              </div>
+              <div class="toast" id="pro-toast">
+                <span class="toast__mark" aria-hidden="true"></span>
+                <span><b>Schedule change</b>Your 3:00 moved to Court 2.</span>
+              </div>
+            </div>
+          </div>
+          <p class="views__cap"><b>The pro keeps their day.</b> A coach opens the app and sees their hours, in order, with the court. It updates itself, so <span class="quiet">let me check with the desk</span> stops being a step in anyone's morning.</p>
+        </div>
+      </div>
+
+      <p class="views__hint" data-reveal>Watch the grid: the desk drags the 3:00 cardio group to Court 2, and Danny's phone knows before he does.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ PAPER ═══════════════════════ -->
+  <section class="section" id="paper">
+    <div class="wrap">
+      <div class="paperlede">
+        <div class="paperlede__copy">
+          <p class="eyebrow" data-reveal>Reversible by design</p>
+          <h2 class="h2" data-reveal style="--i:1">You don't have to<br class="br-lg"> give up paper.</h2>
+          <div class="prose" data-reveal style="--i:2">
+            <p>Courtime prints the day sheet in the layout the desk already reads: same columns, same order, same shape as the book. Clip it to the board. Hand it to the pro who will never open an app. Paper stops being the only copy without ever stopping being paper.</p>
+            <p>Through the pilot, the book stays the source of truth and Courtime just mirrors it — the desk changes nothing about how it works. If it hasn't earned its place after a month, you close the tab. There's no migration to unwind, because nothing was ever taken away.</p>
+            <p>When the club is ready, the direction flips: the app becomes the record and the printed sheet becomes the copy. Most clubs never announce the day it happens. They notice a week later that nobody has opened the book.</p>
+          </div>
+          <ul class="promises" data-reveal style="--i:3">
+            <li>Every entry exports to CSV whenever you want it.</li>
+            <li>The original photograph stays attached to every entry it produced.</li>
+            <li>No contract, no setup fee, no lock-in of any kind.</li>
+          </ul>
+        </div>
+
+        <div class="paperlede__art" data-reveal style="--i:1" aria-hidden="true">
+          <div class="sheetprint">
+            <div class="sheetprint__head">
+              <span class="sheetprint__club">Sea Island Club</span>
+              <span class="sheetprint__day">Tuesday, March 12</span>
+            </div>
+            <table class="sheetprint__table">
+              <thead><tr><th>Time</th><th>Court 1</th><th>Court 2</th><th>Court 3</th><th>Court 4</th></tr></thead>
+              <tbody>
+                <tr><td class="tnum">1:00</td><td>Private — Miller <em>AG</em></td><td></td><td>Maintenance</td><td>High school <em>DL</em></td></tr>
+                <tr><td class="tnum">1:30</td><td>&#8214;</td><td>Private — Hayes <em>MV</em></td><td></td><td>&#8214;</td></tr>
+                <tr><td class="tnum">2:00</td><td></td><td>&#8214;</td><td></td><td></td></tr>
+                <tr><td class="tnum">2:30</td><td></td><td></td><td></td><td>Round robin</td></tr>
+                <tr><td class="tnum">3:00</td><td></td><td>Cardio group <em>DL</em></td><td></td><td>&#8214;</td></tr>
+                <tr><td class="tnum">3:30</td><td>Ladies' 3.0 <em>AG</em></td><td>&#8214;</td><td></td><td></td></tr>
+                <tr><td class="tnum">4:00</td><td>&#8214;</td><td>Junior clinic <em>MV</em></td><td></td><td></td></tr>
+                <tr><td class="tnum">4:30</td><td></td><td>&#8214;</td><td></td><td></td></tr>
+              </tbody>
+            </table>
+            <div class="sheetprint__foot"><span>Printed from Courtime · 6:42 AM</span><span>AG Alex · DL Danny · MV Marta</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ PRICING ═══════════════════════ -->
+  <section class="section section--wash" id="pricing">
+    <div class="wrap">
+      <header class="shead">
+        <p class="eyebrow" data-reveal>Pricing</p>
+        <h2 class="h2" data-reveal style="--i:1">Free is the whole calendar.</h2>
+        <p class="shead__sub lede" data-reveal style="--i:2">The habit — capture the page, see the day, stay current — is free and stays free. The paid tier sells automation on top of it, never the habit itself.</p>
+      </header>
+
+      <div class="plans">
+        <article class="plan" data-reveal>
+          <header class="plan__head">
+            <h3 class="plan__name">Free</h3>
+            <p class="plan__price"><span class="plan__amt">$0</span></p>
+            <p class="plan__sub">Forever, for the whole club.</p>
+          </header>
+          <ul class="plan__list">
+            <li>Photo import of the paper page, with human verification</li>
+            <li>Unlimited pros, unlimited courts</li>
+            <li>The mobile app for every coach on staff</li>
+            <li>Live sync — every device, no refresh</li>
+            <li>Change alerts when a booking moves</li>
+            <li>Printable day sheets in the desk's layout</li>
+          </ul>
+          <a class="btn btn--ghost btn--full" href="#" data-cta="start-free">Start free</a>
+        </article>
+
+        <article class="plan plan--pro" data-reveal style="--i:1">
+          <header class="plan__head">
+            <h3 class="plan__name">Pro</h3>
+            <p class="plan__price"><span class="plan__amt">$19</span><span class="plan__per">/month per club</span></p>
+            <p class="plan__sub">Flat. Not per coach, not per court, not per booking.</p>
+          </header>
+          <ul class="plan__list plan__list--pro">
+            <li><b>Everything in Free</b>, plus:</li>
+            <li><b>Smart notifications</b> — morning digests, plus rules you write yourself: tell me only about tomorrow, only about my courts, only when something moves inside 24 hours.</li>
+            <li><b>The assistant</b> — ask <span class="quiet">who's free Thursday at 4?</span> or say <span class="quiet">move Danny's 3:00 to Court 2</span>, in the same box you use to jump to a date.</li>
+            <li><b>Extended analytics</b> — court utilization heatmaps, load balance across pros, month-over-month trends the director can read from anywhere.</li>
+            <li><b>Payroll export</b> — every pro's hours as a clean CSV the bookkeeper can open without asking you a question.</li>
+          </ul>
+          <a class="btn btn--primary btn--full" href="#" data-cta="start-pro">See Pro in the demo</a>
+        </article>
+      </div>
+
+      <p class="plans__note" data-reveal>A club with four coaches and a club with twenty pay the same nineteen dollars. Growing your staff should not be a billing event.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FAQ ═══════════════════════ -->
+  <section class="section" id="faq">
+    <div class="wrap wrap--narrow">
+      <header class="shead shead--left">
+        <p class="eyebrow" data-reveal>Questions</p>
+        <h2 class="h2" data-reveal style="--i:1">The five things every club asks.</h2>
+      </header>
+
+      <div class="faq" data-reveal>
+        <details name="faq" open>
+          <summary>Do we have to stop using paper?<span class="faq__ind" aria-hidden="true"></span></summary>
+          <div class="faq__a"><p>No. Courtime prints the day sheet in the layout your desk already reads, so the paper you like keeps existing — it just stops being the only copy. Through the pilot the book stays the source of truth and the app mirrors it. If the club later decides the app should be the record, that's a decision you make on a Monday, not a condition of starting.</p></div>
+        </details>
+        <details name="faq">
+          <summary>How accurate is the photo import?<span class="faq__ind" aria-hidden="true"></span></summary>
+          <div class="faq__a"><p>Accurate enough that reviewing a page takes under a minute, and it doesn't matter if it weren't, because every page is checked by a person before it publishes. The parsed grid appears beside your photo with anything uncertain flagged; you fix the flagged cells and confirm. The AI never publishes on its own — that's a design decision, not a setting.</p></div>
+        </details>
+        <details name="faq">
+          <summary>What if we already have months booked on paper?<span class="faq__ind" aria-hidden="true"></span></summary>
+          <div class="faq__a"><p>One archive session handles it. Someone photographs every future page of the book — about forty minutes for a hundred and sixty pages — and the batch gets imported and reviewed in an afternoon. From then on, the desk clips a sticky tab on any future page it writes on, and those pages get re-photographed weekly. You keep working exactly as you do now while the back half of the book quietly becomes digital.</p></div>
+        </details>
+        <details name="faq">
+          <summary>Do the coaches need to install anything?<span class="faq__ind" aria-hidden="true"></span></summary>
+          <div class="faq__a"><p>No app store, no download. It's a web app: a coach opens the link, taps add to home screen, and it behaves like any other app on the phone — about ten seconds, once. That step also switches on push, which is how the change alerts arrive.</p></div>
+        </details>
+        <details name="faq">
+          <summary>What does it cost to start?<span class="faq__ind" aria-hidden="true"></span></summary>
+          <div class="faq__a"><p>Nothing. The free tier is the complete calendar, forever: photo import, every coach on the mobile app, live sync, change alerts, printable day sheets. Pro is nineteen dollars a month for the whole club if you want the digests, the assistant, the analytics and the payroll export. No card to try it and no setup fee either way.</p></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════ FINAL CTA ═══════════════════════ -->
+  <section class="cta">
+    <div class="wrap wrap--narrow">
+      <h2 class="cta__h" data-reveal>Put the book on every phone.</h2>
+      <p class="cta__p" data-reveal style="--i:1">Open the demo club and move something on the grid — a phone in the same tab will tell you about it. Or send one photograph of your real page and get it back as a working day.</p>
+      <div class="cta__row" data-reveal style="--i:2">
+        <a class="btn btn--primary" href="#" data-cta="demo-final">See the live demo</a>
+        <a class="btn btn--ghost" href="#" data-cta="contact">Talk to us</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__inner">
+    <div class="foot__brand">
+      <span class="wordmark wordmark--foot">
+        <svg class="mark" width="22" height="22" viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+          <rect x="1.6" y="3.6" width="22.8" height="18.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M13 3.6V22.4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.6 1.9" opacity=".55"/>
+          <path d="M13 13V7.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M13 13l4.6 2.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <circle cx="13" cy="13" r="1.35" fill="currentColor"/>
+        </svg>
+        <span class="wordmark__text">Courtime</span>
+      </span>
+      <p class="foot__tag">Courtime — built for racquet clubs.</p>
+    </div>
+    <nav class="foot__links" aria-label="Footer">
+      <a href="#how">How it works</a>
+      <a href="#views">Two views</a>
+      <a href="#paper">Paper</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">FAQ</a>
+      <a href="#" data-cta="contact-foot">Contact</a>
+      <a href="#" data-cta="privacy">Privacy</a>
+    </nav>
+  </div>
+  <div class="wrap foot__base">
+    <p>&copy; 2026 Courtime</p>
+    <p>The club's paper schedule book, on every phone.</p>
+  </div>
+</footer>
+
+<script src="main.js" defer></script>
+</body>
+</html>

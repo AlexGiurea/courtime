@@ -4,3 +4,9 @@ dist
 .env.local
 *.local
 .DS_Store
+
+# Vendor guidance for AI coding agents — reinstall with `npx convex ai-files install`
+.agents/
+.claude/skills/
+convex/_generated/ai/
+skills-lock.json

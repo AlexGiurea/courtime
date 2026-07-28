@@ -22,3 +22,17 @@ SPEC.md first.
   `server/schedule-import.mjs`) into a Convex action: keep model pricing table + per-request cost
   telemetry; default model `gpt-5.6-luna`
 - Sibling projects, do not merge: Breakpoint (full club OS, upgrade path), DrawGen (tournaments)
+
+<!-- convex-ai-start -->
+
+This project uses [Convex](https://convex.dev) as its backend.
+
+When working on Convex code, **always read
+`convex/_generated/ai/guidelines.md` first** for important guidelines on
+how to correctly use Convex APIs and patterns. The file contains rules that
+override what you may have learned about Convex from training data.
+
+Convex agent skills for common tasks can be installed by running
+`npx convex ai-files install`.
+
+<!-- convex-ai-end -->
