@@ -1,0 +1,178 @@
+:root {
+  --ink: #101418;
+  --muted: #5b6570;
+  --line: #e3e7ec;
+  --paper: #ffffff;
+  --wash: #f5f7f9;
+  --accent: #0e7a5f;
+  --accent-soft: #e2f3ee;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--wash);
+  color: var(--ink);
+}
+
+.shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+
+.brand span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.role-toggle {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.role-toggle button {
+  border: 0;
+  background: transparent;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.role-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.card + .card {
+  margin-top: 16px;
+}
+
+.card h2 {
+  margin: 0 0 4px;
+  font-size: 16px;
+}
+
+.card p.sub {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.grid {
+  overflow-x: auto;
+}
+
+.grid table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 640px;
+  font-size: 13px;
+}
+
+.grid th,
+.grid td {
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.grid th {
+  background: var(--wash);
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slot {
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 4px 6px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.slot.other {
+  background: #eef1f4;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.mine-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mine-list li {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 14px;
+  background: var(--paper);
+}
+
+.mine-list .time {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.mine-list .what {
+  flex: 1;
+}
+
+.mine-list .where {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.note {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
