@@ -1,9 +1,10 @@
-# CoreTime
+# Courtime
 
 The club's paper schedule book, on every phone. A shared, synchronized schedule between club
-leadership (director, front desk) and the pros/coaches who work the courts.
+leadership (director, front desk) and the pros/coaches who work the courts. (Repo folder is
+`CoreTime`; the product name is **Courtime**.)
 
-- Product & system design: [docs/PRODUCT.md](docs/PRODUCT.md)
+- Canonical spec: [docs/SPEC.md](docs/SPEC.md)
 - First deployment target: Sea Island Club (free tier)
 - Related projects: Breakpoint (full club operating system — the upgrade path), DrawGen (tournaments)
 
@@ -19,4 +20,4 @@ Dev server: http://127.0.0.1:5183
 ## Status
 
 Concept shell: static demo of the two surfaces (front-desk day grid, pro "my day" view) with demo
-data. No backend yet — see PRODUCT.md for the v1 scope.
+data. No backend yet — see [docs/SPEC.md](docs/SPEC.md) for the MVP scope and build order.

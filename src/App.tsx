@@ -84,7 +84,7 @@ export default function App() {
     <div className="shell">
       <header className="topbar">
         <div className="brand">
-          <h1>CoreTime</h1>
+          <h1>Courtime</h1>
           <span>the club's paper schedule, on every phone</span>
         </div>
         <nav className="role-toggle">
@@ -100,7 +100,7 @@ export default function App() {
       {role === "desk" ? <DeskView /> : <ProView />}
 
       <p className="note">
-        Concept shell with demo data — the two surfaces of the product. See docs/PRODUCT.md for the full design.
+        Concept shell with demo data — the two surfaces of the product. See docs/SPEC.md for the full design.
       </p>
     </div>
   );
