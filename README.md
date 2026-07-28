@@ -1,8 +1,7 @@
 # Courtime
 
 The club's paper schedule book, on every phone. A shared, synchronized schedule between club
-leadership (director, front desk) and the pros/coaches who work the courts. (Repo folder is
-`CoreTime`; the product name is **Courtime**.)
+leadership (director, front desk) and the pros/coaches who work the courts.
 
 - Canonical spec: [docs/SPEC.md](docs/SPEC.md)
 - First deployment target: Sea Island Club (free tier)

@@ -1,15 +1,19 @@
 # Courtime — Canonical Product & Build Spec
 
 > **This is the single source of truth for building Courtime.** It is written so that a fresh
-> agent session with zero conversation history can build the MVP in one shot from this document
-> alone. When product decisions change, change them HERE first.
+> agent session with zero conversation history can build the working end-to-end MVP in one shot
+> from this document alone. When product decisions change, change them HERE first.
 
-- **App name:** Courtime (Court + time). Repo folder stays `CoreTime`; all user-facing branding says
-  **Courtime**.
+- **App name:** Courtime (Court + time). Repo folder: `Courtime`.
 - **One-line pitch:** the club's paper schedule book, on every phone.
 - **First deployment:** Sea Island Club (Alex's club), free tier, pilot framing in §2 and §10.
+- **Backend platform decision (firm):** **Convex** for database, server functions, file storage,
+  scheduling, AND auth (Convex Auth). No Supabase, no Neon, no separate Postgres, no paid Clerk
+  seat. Anything Convex can do, Convex does. Frontend hosts on Vercel; Convex cloud free tier
+  carries the pilot.
 - **Sibling projects (do NOT merge with):** Breakpoint (`AIOS Agent SaaS` repo — full club operating
-  system, the upgrade path; its vision import pipeline is the porting source), DrawGen (tournaments).
+  system, the upgrade path; its vision import prompt/logic is the porting source), DrawGen
+  (tournaments).
 
 ---
 
@@ -59,20 +63,20 @@ in MVP.
 - **Day grid:** time rows (configurable day window, 30-min granularity) × court columns. Mirrors
   the paper page visually.
 - **Entry editing:** click cell → inline quick-entry (`Danny — Private (R. Hayes)` free text +
-  optional structured pro picker + duration). Drag to extend; right-click or hover menu: edit,
-  move, delete.
+  optional structured pro picker + duration). Drag to extend; hover menu: edit, move, delete.
 - **Keyboard navigation (non-negotiable, this is the desk's speed story):**
   - `Ctrl+K` command palette: type `nov 12`, `next tuesday`, `today` → jump. (Pro tier later: same
     box accepts natural-language agent queries.)
   - `←/→` previous/next day, `Shift+←/→` week jump, `T` today.
   - Type directly into focused cell to create an entry; `Esc` cancels, `Enter` commits.
 - **Print day sheet:** `Ctrl+P` / button → clean printable layout of the day grid (close to the
-  paper book's format). This is a first-class feature, not an afterthought (see §2).
-- **Live updates:** poll every 30s; show a subtle "updated Xs ago" indicator.
+  paper book's format). First-class feature, not an afterthought (see §2).
+- **Live updates:** free with Convex — `useQuery` subscriptions are reactive, so the grid updates
+  the moment any client mutates. No polling code. Show a subtle "live" indicator.
 
 ### 4.2 Pro app (`/me`) — mobile-first PWA
 - **My day / My week:** list of the signed-in pro's entries (time, what, court). Google-Calendar-ish
-  list density. Read-only in MVP.
+  list density. Read-only in MVP. Live via the same reactive queries.
 - **Optional full-club view** (`/me/club`, permission-gated per org setting).
 - **PWA:** installable (manifest + service worker), works from home screen. **Web push** for change
   alerts: "Your 3:00 PM moved to Court 2." iOS caveat: push requires add-to-home-screen first —
@@ -80,23 +84,26 @@ in MVP.
 - **Basic change alerts are FREE tier** (the "always current" promise). Smart digests/rules are paid.
 
 ### 4.3 Importer (`/desk/import`) — the migration weapon
-- **Batch upload:** drag/select many photos at once (phone gallery or desktop). Creates an
-  `import_batch` with N `import_pages`.
-- **Queue:** server processes pages sequentially/parallel (limit ~3 concurrent), status per page:
-  `queued → extracting → verifying → needs_review → confirmed | failed`.
-- **Extraction pipeline (ported from Breakpoint `server/schedule-import.mjs`):**
+- **Batch upload:** drag/select many photos at once (phone gallery or desktop). Photos go to Convex
+  file storage via upload URLs; creates an `importBatches` doc with N `importPages` docs.
+- **Queue:** a Convex action-driven pipeline processes pages (~3 concurrent via the scheduler),
+  status per page: `queued → extracting → verifying → needs_review → confirmed | failed`. Status is
+  reactive in the UI for free.
+- **Extraction pipeline (logic ported from Breakpoint `server/schedule-import.mjs`, runs in a
+  Convex `"use node"` action):**
   - Vision call: page photo + date hint + org's court/hours config → structured JSON entries.
     Model: `OPENAI_VISION_MODEL` (default `gpt-5.6-luna`, $1/M in, $6/M out); per-batch override to
-    `gpt-5.6-sol`/`terra` for dense pages. Keep the pricing table + per-request cost telemetry.
+    `gpt-5.6-sol`/`terra` for dense pages. Keep the pricing table + per-request cost telemetry,
+    stored on the page doc.
   - Domain constraints in prompt: 30-min grid snapping, hour clinics, coachless courts allowed,
     known pro-name roster passed in for name normalization.
-  - **Verification pass (new vs Breakpoint):** second cheap call critiques the extraction —
-    grid violations, double-booked pros, court/time out of range → per-cell confidence flags.
+  - **Verification pass:** second cheap call critiques the extraction — grid violations,
+    double-booked pros, court/time out of range → per-cell confidence flags.
   - Provider-agnostic adapter so a Gemini bake-off is a config change, not a rewrite. (Planned
     bake-off: same 5 real pages through luna/sol/gemini, count wrong cells, pick default.)
 - **Review screen (the trust anchor):** photo on left, parsed grid on right, low-confidence cells
   highlighted; tap-to-fix; nothing publishes until confirmed. Every published entry keeps
-  `source_page_id` → tap any entry later to see the original paper photo (audit trail).
+  `sourcePageId` → tap any entry later to see the original paper photo (audit trail).
 
 ### 4.4 Landing page — separate static build (`landing/` in repo, deploys independently)
 - Level of finish: match the AIOS Agency site's professionalism, plus more motion: hero concept =
@@ -123,55 +130,73 @@ in MVP.
 5. **Cutover Monday:** app becomes source of truth; desk prints the day sheet; book becomes archive.
    Never announced as a migration — it's just the day paper became downstream.
 
-## 6. System architecture
+## 6. System architecture — Convex-first
 
-- **Stack (mirror Breakpoint's, nothing new to operate):** React 18 + Vite + TypeScript frontend;
-  Node API server (Express-style, `server/` dir); Postgres on Neon via Drizzle ORM + migrations;
-  Clerk auth feature-flagged on `VITE_CLERK_PUBLISHABLE_KEY` (absent → anonymous dev workspace mode,
-  same pattern as Breakpoint); deploy on Vercel.
-- **Vercel dual-router discipline (learned the hard way on Breakpoint):** every `/api/*` route must
-  be registered in BOTH the dev server entry AND the prod catch-all (`api/index.js`) or it 404s in
-  prod only.
+- **Stack:** React 18 + Vite + TypeScript frontend (desk + pro route groups); **Convex** for
+  everything server-side: reactive database, queries/mutations, `"use node"` actions (OpenAI calls,
+  web push), file storage (page photos), scheduler (import queue, alert fanout), HTTP actions if a
+  webhook is ever needed. **Convex Auth** (`@convex-dev/auth`) for authentication.
+- **Why this wins here specifically:** the product's core promise is "always current on every
+  phone" — Convex subscriptions make every surface live with zero polling/websocket code, and the
+  import queue's per-page status streams to the review UI for free.
+- **Auth model:** Convex Auth with **email OTP/magic-link** (no passwords — right call for pros and
+  front desk; nothing for the desk to support). Roles come from `memberships`, enforced inside
+  every query/mutation via a shared `requireMembership(ctx, orgId, minRole)` helper. Dev
+  convenience: seeded accounts.
+- **Hosting:** frontend on Vercel (static Vite build; no Vercel API routes at all — Breakpoint's
+  dual-router gotcha does not apply here). Convex cloud dev + prod deployments
+  (`npx convex dev` / `npx convex deploy`). Free tier is sufficient for the pilot.
+- **Env/config:** Convex deployment vars (`npx convex env set`): `OPENAI_API_KEY`,
+  `OPENAI_VISION_MODEL` (default `gpt-5.6-luna`), `OPENAI_VISION_REASONING_EFFORT` (default `low`),
+  `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`. Frontend: `VITE_CONVEX_URL`.
 - **Repo layout:**
   ```
-  CoreTime/
+  Courtime/
     src/            # app frontend (desk + pro route groups)
-    server/         # API, db schema/migrations, import pipeline
+    convex/         # schema.ts, auth.ts, functions (entries, orgs, imports, push), actions
     landing/        # separate static landing site
     docs/SPEC.md    # this file
   ```
-- **Realtime:** polling (30s desk, 60s pro). No websockets in MVP — not earned yet.
-- **Push:** standard Web Push (VAPID keys env: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`), service
-  worker in pro PWA; subscription rows per user+device.
-- **Env vars:** `DATABASE_URL`, `OPENAI_API_KEY`, `OPENAI_VISION_MODEL`, `OPENAI_VISION_REASONING_EFFORT`,
-  `VITE_CLERK_PUBLISHABLE_KEY`/`CLERK_SECRET_KEY` (optional in dev), VAPID pair.
-- **Dev ports:** frontend 5183, API 5184 (`npm run dev:all`).
+- **Dev:** `npm run dev` (Vite, port 5183) + `npx convex dev` in parallel (`npm run dev:all` wraps
+  both).
 
-### 6.1 Data model (Drizzle/Postgres)
+### 6.1 Data model (`convex/schema.ts`)
 
-- `orgs` — id, name, slug, day_start, day_end, settings jsonb (e.g. pros_can_see_club)
-- `courts` — id, org_id, name, sort_order, active
-- `users` — id, clerk_id nullable, email, display_name
-- `memberships` — user_id, org_id, role (`admin|staff|pro`), pro_color nullable
-- `entries` — id, org_id, court_id, date, start_min, end_min (minutes-from-midnight, 30-min snapped),
-  pro_user_id nullable, label text, notes nullable, source (`manual|import|print`), source_page_id
-  nullable, created_by, updated_at. Index (org_id, date).
-- `import_batches` — id, org_id, created_by, status, model, totals jsonb (pages, cost_usd, tokens)
-- `import_pages` — id, batch_id, photo_url (blob storage or db bytea in MVP), date_hint nullable,
-  status, extraction jsonb, verification jsonb (per-cell confidence), cost jsonb, error nullable
-- `entry_changes` — id, entry_id, org_id, change_type (`created|moved|edited|deleted`), before jsonb,
-  after jsonb, at, by — feeds change alerts + audit
-- `push_subscriptions` — id, user_id, endpoint, keys jsonb, created_at
+Convex tables (documents + indexes; times stored as minutes-from-midnight, 30-min snapped; dates as
+`YYYY-MM-DD` strings):
 
-### 6.2 API routes (register in BOTH routers)
+- `orgs` — name, slug, dayStartMin, dayEndMin, settings { prosCanSeeClub }, plan (`free|pro`)
+- `courts` — orgId, name, sortOrder, active. Index `by_org`.
+- `memberships` — userId (Convex Auth user id), orgId, role (`admin|staff|pro`), displayName,
+  proColor?. Indexes `by_org`, `by_user`.
+- `entries` — orgId, courtId, date, startMin, endMin, proUserId?, label, notes?, source
+  (`manual|import`), sourcePageId?, createdBy, updatedAt. Indexes `by_org_date`,
+  `by_org_pro_date`.
+- `importBatches` — orgId, createdBy, status, model, totals { pages, confirmedPages, costUsd,
+  inputTokens, outputTokens }. Index `by_org`.
+- `importPages` — batchId, orgId, photoStorageId (Convex storage), dateHint?, status, extraction?
+  (parsed entries JSON), verification? (per-cell confidence flags), cost?, error?. Index
+  `by_batch`.
+- `entryChanges` — orgId, entryId, changeType (`created|moved|edited|deleted`), before?, after?,
+  at, byUserId. Index `by_org_at`. Feeds change alerts + audit.
+- `pushSubscriptions` — userId, endpoint, keys { p256dh, auth }, createdAt. Index `by_user`.
 
-- `GET/POST/PATCH/DELETE /api/entries` (query: org, date range; mutations write `entry_changes`)
-- `GET /api/day?date=` (grid payload: courts + entries + last_updated)
-- `POST /api/imports` (create batch, upload pages) / `GET /api/imports/:id` (status) /
-  `POST /api/imports/:id/pages/:pageId/confirm` (publish reviewed entries)
-- `GET/POST /api/orgs`, `/api/courts`, `/api/members` (+ invite: `POST /api/members/invite`)
-- `POST /api/push/subscribe`, change-alert fanout job on entry mutation
-- `GET /api/me/schedule?range=` (pro view payload)
+(Convex Auth adds its own `users`/auth tables via `@convex-dev/auth` schema helpers.)
+
+### 6.2 Server functions (`convex/`)
+
+- **Queries (all reactive):** `day.get({orgId, date})` → courts + entries + meta;
+  `me.schedule({range})`; `orgs.get`, `courts.list`, `members.list`;
+  `imports.batch({batchId})` → batch + pages with statuses (review UI subscribes to this).
+- **Mutations:** `entries.create/update/move/remove` (each writes `entryChanges` and schedules
+  push fanout); `courts.upsert`; `members.invite` (creates pending membership keyed to email;
+  first OTP sign-in claims it); `imports.createBatch` (+ storage upload URLs);
+  `imports.confirmPage` (publishes reviewed entries transactionally).
+- **Actions (`"use node"`):** `imports.processPage` (vision extract → verify → write results;
+  scheduled per page, ~3 concurrent); `push.send` (web-push with VAPID; called from scheduler on
+  entry changes).
+- **Auth guard:** every function resolves the caller's membership first; `pro` role gets read-only
+  scope (own entries, or org-wide if `prosCanSeeClub`).
 
 ## 7. Pricing (build the gates, not the billing, in MVP)
 
@@ -186,12 +211,12 @@ in MVP.
 | Extended analytics (utilization heatmaps, pro load, trends — Breakpoint-style insight surface) | rudimentary strip only | ✅ |
 | Payroll/hours export (CSV per pro per period) | — | ✅ (likely #1 closer) |
 
-MVP implements the FREE column only, plus a `plan` field on orgs and UI affordances (locked pro
-features visible but gated) so the upsell surface exists from day one. Stripe comes later.
+MVP implements the FREE column only, plus `plan` on orgs and UI affordances (locked pro features
+visible but gated) so the upsell surface exists from day one. Stripe comes later.
 
 ## 8. Design system ("professional, never AI slop")
 
-- **Tone:** calm operational software. References: Linear's restraint, Notion's warmth. No gradients
+- **Tone:** calm operational software. References: Linear's restraint, Notion's warmth. No gradient
   soup, no glassmorphism, no emoji in UI chrome.
 - **Type:** one family (Inter or similar), tabular numerals for times, 13–14px data density on desk,
   16px+ on pro mobile.
@@ -202,21 +227,42 @@ features visible but gated) so the upsell surface exists from day one. Stripe co
 - **Motion:** 150–200ms ease transitions only where state changes (cell commit, day flip). Landing
   page is where motion gets to show off; the app stays quiet.
 
-## 9. MVP build order (one-shot checklist)
+## 9. One-shot build plan (end-to-end working, not a mockup)
 
-1. Rename branding to Courtime everywhere (folder stays `CoreTime`)
-2. Server: db schema + migrations, org/court/member/entry CRUD, dev seed (Sea Island courts + demo pros)
-3. Desk app: day grid, inline entry editing, keyboard nav + `Ctrl+K` palette, print day sheet, polling
-4. Importer: batch upload → queue → extraction (ported pipeline + verification pass + telemetry) →
-   side-by-side review → confirm/publish; audit-trail link photo↔entries
-5. Pro PWA: my day/week, install flow, web push change alerts (fanout from `entry_changes`)
-6. Auth + roles + invites (Clerk-flagged, anonymous dev mode)
-7. Landing page (`landing/`)
-8. Verification gate: `npm run build` green; manual smoke of the §10 pilot loop end-to-end
+Execute in this order; each phase ends with its own verification before moving on. Gate at the end
+of every phase: `npm run build` green + the phase's smoke check passes in the browser.
 
-**Definition of done for MVP:** Alex can photograph a real Sea Island page, import-review-publish it
-in under 5 minutes, Danny sees his correct hours on his phone within a minute, and moving an entry
-at the desk pushes a change alert to Danny's phone.
+1. **Foundation:** add Convex + Convex Auth to the repo (`npx convex dev` bootstraps
+   `convex/`); write `schema.ts` (§6.1); OTP email sign-in wired; `npm run dev:all` script.
+   *Smoke: sign in with OTP, see an authenticated shell.*
+2. **Org bootstrap + seed:** org/courts/memberships functions; first-run flow creates Sea Island
+   org; seed script adds courts + demo pros (Alex admin, Danny pro).
+   *Smoke: fresh account lands in seeded org with correct role.*
+3. **Desk grid (the core):** `/desk` day grid on `day.get`; inline entry create/edit/move/delete
+   mutations; keyboard nav + `Ctrl+K` date palette; print day sheet stylesheet.
+   *Smoke: create/move/delete entries by keyboard only; two browser windows update live; Ctrl+P
+   yields a clean page.*
+4. **Importer:** batch upload to storage → scheduled `processPage` actions (ported Breakpoint
+   prompt + verification pass + cost telemetry) → reactive queue UI → side-by-side review →
+   `confirmPage` publishes with audit link.
+   *Smoke: import a real photographed page end-to-end; entries appear in grid; cost recorded;
+   entry links back to photo.*
+5. **Pro PWA + push:** `/me` day/week views; manifest + service worker + install onboarding
+   (iOS add-to-home-screen walkthrough); `pushSubscriptions` + `push.send` fanout from entry
+   mutations.
+   *Smoke: on a phone, install PWA, receive a change alert when the desk moves an entry.*
+6. **Invites + roles hardening:** `members.invite` email flow; role checks on every function
+   (attempt pro-role mutation → rejected).
+   *Smoke: invited pro signs in via OTP and sees only their schedule.*
+7. **Landing page** (`landing/`): per §4.4, using real app screenshots.
+8. **Final gate — the Definition of Done (§9.1) executed literally, plus a fresh-clone test:**
+   `git clone` → install → env setup per README → full flow works.
+
+### 9.1 Definition of done for MVP
+
+Alex can photograph a real Sea Island page, import-review-publish it in under 5 minutes, Danny sees
+his correct hours on his phone within a minute (no refresh), and moving an entry at the desk pushes
+a change alert to Danny's phone.
 
 ## 10. Sea Island pilot — the director framing (see also §5)
 
