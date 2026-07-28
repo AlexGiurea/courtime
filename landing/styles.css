@@ -73,7 +73,6 @@ button{font:inherit;color:inherit}
 /* ─── layout ─────────────────────────────────────────────── */
 .wrap{width:100%;max-width:var(--maxw);margin-inline:auto;padding-inline:var(--gut)}
 .wrap--narrow{max-width:800px}
-.wrap--wide{max-width:1240px}
 .section{padding-block:var(--pad)}
 .section--wash{background:var(--wash);border-block:1px solid var(--line)}
 .section--dark{background:var(--ink);color:#d8dee4}
@@ -599,12 +598,6 @@ kbd{
 }
 .plan:hover{transform:translateY(-2px);box-shadow:var(--shadow-md)}
 .plan--pro{border-color:#c9e3da;box-shadow:0 1px 2px rgba(16,20,24,.05),0 24px 50px -26px rgba(14,122,95,.4)}
-.plan__tag{
-  position:absolute;top:-11px;left:clamp(26px,3vw,38px);
-  background:var(--accent);color:#fff;
-  font-size:.68rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;
-  padding:4px 11px;border-radius:999px;
-}
 .plan__head{padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:22px}
 .plan__name{font-size:.9rem;font-weight:600;color:var(--muted);letter-spacing:.02em;margin-bottom:12px}
 .plan__price{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
