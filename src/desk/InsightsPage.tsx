@@ -4,6 +4,7 @@ import { api } from "../../convex/_generated/api";
 import { SessionWithClub } from "../App";
 import { Loading, useGuarded, useToast } from "../ui";
 import { addDays, formatDateMedium, todayIso } from "../lib/time";
+import InsightTicker from "./InsightTicker";
 
 const PERIODS = [
   { id: "7", label: "Last 7 days", days: 7 },
@@ -194,6 +195,8 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
           </button>
         </div>
       </div>
+
+      <InsightTicker />
 
       <div className="stack">
         <div className="card">

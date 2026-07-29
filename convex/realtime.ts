@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { AgentTool, clubBriefing, loadSession, toolsFor } from "./agent";
 
@@ -19,6 +20,14 @@ import { AgentTool, clubBriefing, loadSession, toolsFor } from "./agent";
 
 const DEFAULT_MODEL = "gpt-realtime-2";
 const DEFAULT_VOICE = "cedar";
+
+/**
+ * What a call is booked against the club's monthly ceiling when it starts.
+ * A realistic desk call is well under a minute of audio either way; this is
+ * deliberately a little pessimistic so the ceiling bites before the invoice
+ * does. Adjust once there's a month of real usage to look at.
+ */
+const VOICE_CALL_ESTIMATE_USD = 0.06;
 
 /** Realtime flattens the tool shape: no nesting under `function`. */
 function toRealtimeTools(tools: AgentTool[]) {
@@ -67,6 +76,26 @@ export const session = action({
     if (!apiKey) {
       return { ok: false, error: "Voice isn't configured on this deployment." };
     }
+
+    // A voice call is the one thing here that can quietly run up a bill, so the
+    // club's month is checked before a session is minted rather than after.
+    // Charged at mint rather than per minute: it's an estimate, but it's an
+    // estimate that exists, which is the whole point of having a ceiling.
+    try {
+      await ctx.runQuery(internal.budget.check, {
+        orgId: agentSession.club.org._id,
+        kind: "voice",
+        at: Date.now(),
+      });
+    } catch (error) {
+      return { ok: false, error: (error as Error).message };
+    }
+    await ctx.runMutation(internal.budget.record, {
+      orgId: agentSession.club.org._id,
+      kind: "voice",
+      costUsd: VOICE_CALL_ESTIMATE_USD,
+      at: Date.now(),
+    });
 
     const model = process.env.OPENAI_REALTIME_MODEL || DEFAULT_MODEL;
     const voice = process.env.OPENAI_REALTIME_VOICE || DEFAULT_VOICE;

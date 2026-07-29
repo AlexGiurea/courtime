@@ -11,7 +11,7 @@ const DEMO_ACCOUNTS = [
   {
     email: "alex@courtime.demo",
     name: "Alex Giurea",
-    title: "Front desk — Sea Island Club",
+    title: "Front desk — demo club",
     blurb: "The club view: day grid, photo import, settings",
   },
   {

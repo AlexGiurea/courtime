@@ -204,7 +204,10 @@ async function ensureDemoOrg(ctx: MutationCtx): Promise<Id<"orgs">> {
   if (existing) return existing._id;
 
   const orgId = await ctx.db.insert("orgs", {
-    name: "Sea Island Club",
+    // Not the name of a real club. The demo is open to anyone with the URL and
+    // is writable by whoever walks in, so it must never be mistaken for — or
+    // share a name with — a club that has actual bookings in it.
+    name: "Lakeside Racquet Club (demo)",
     slug: DEMO_SLUG,
     dayStartMin: 7 * 60,
     dayEndMin: 19 * 60,

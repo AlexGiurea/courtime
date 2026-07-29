@@ -219,7 +219,7 @@ function SchedulePage({
   }, [clinics]);
 
   return (
-    <div className="page">
+    <div className="page schedule">
       <div className="print-only">
         <h1>
           {session.org.name} — {formatDateLong(date)}
@@ -275,7 +275,7 @@ function SchedulePage({
         </button>
       </div>
 
-      <div className="flip-stage">
+      <div className={`flip-stage${shown === "clinics" ? " is-clinics" : ""}`}>
         <div {...faceProps}>
           {shown === "clinics" ? (
             <ClinicsFace
@@ -298,7 +298,7 @@ function SchedulePage({
         </div>
       </div>
 
-      <p className="muted no-print" style={{ fontSize: 12, marginTop: 12 }}>
+      <p className="muted no-print desk-hint">
         {shown === "clinics"
           ? "The back of the page: who signed up for each clinic. "
           : "Click any empty slot to book it. Drag a booking's bottom edge to lengthen it. "}

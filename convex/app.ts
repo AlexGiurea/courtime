@@ -207,10 +207,32 @@ export const updateOrg = mutation({
 });
 
 /** Demo affordance: flip the club between tiers to see what Pro unlocks. */
+/**
+ * Switching tiers.
+ *
+ * While there is no billing, this is a development switch that lets a club — or
+ * a demo — see both tiers. That is fine now and unacceptable the day someone
+ * pays, so the gate is one environment variable rather than a code change:
+ * set `BILLING_ENFORCED=true` on the deployment and upgrading stops being
+ * self-serve. Downgrading to Free is always allowed; nobody should have to ask
+ * permission to stop using a paid feature.
+ */
 export const setPlan = mutation({
   args: { plan: v.union(v.literal("free"), v.literal("pro")) },
   handler: async (ctx, args) => {
     const membership = await requireMembership(ctx, "admin");
+    const org = await ctx.db.get("orgs", membership.orgId);
+
+    if (
+      args.plan === "pro" &&
+      process.env.BILLING_ENFORCED === "true" &&
+      !org?.isDemo
+    ) {
+      throw new Error(
+        "Pro is billed. Get in touch to switch this club over — it takes a minute and there's no contract.",
+      );
+    }
+
     await ctx.db.patch("orgs", membership.orgId, { plan: args.plan });
     return null;
   },

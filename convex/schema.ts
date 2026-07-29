@@ -33,6 +33,10 @@ export const clinicParticipantValidator = v.object({
   // NTRP rating written in the left margin, e.g. "4.0".
   rating: v.union(v.string(), v.null()),
   note: v.union(v.string(), v.null()),
+  // Past the clinic's capacity. Kept in the same list, in order, because the
+  // paper sheet works the same way — names below the line are still names on
+  // the sheet, and someone dropping out promotes the next one.
+  waitlisted: v.optional(v.boolean()),
 });
 
 export const clinicDraftValidator = v.object({
@@ -93,6 +97,10 @@ export default defineSchema({
     role: roleValidator,
     color: v.string(),
     active: v.boolean(),
+    // What the club pays this coach per hour, in whole cents, set by the club
+    // itself. Absent means "we haven't told Courtime", and the payroll view
+    // says so rather than inventing a number.
+    rateCents: v.optional(v.number()),
   })
     .index("by_org", ["orgId"])
     .index("by_user", ["userId"])
@@ -114,10 +122,14 @@ export default defineSchema({
     requested: v.optional(v.boolean()),
     source: v.union(v.literal("manual"), v.literal("import")),
     sourcePageId: v.optional(v.id("importPages")),
+    // Shared by every booking created from one standing lesson, so "cancel the
+    // rest of these" is one query rather than a hunt.
+    seriesId: v.optional(v.string()),
     updatedAt: v.number(),
   })
     .index("by_org_and_date", ["orgId", "date"])
     .index("by_org_and_pro_and_date", ["orgId", "proMembershipId", "date"])
+    .index("by_series", ["seriesId"])
     .index("by_source_page", ["sourcePageId"]),
 
   importBatches: defineTable({
@@ -190,6 +202,9 @@ export default defineSchema({
     entryId: v.optional(v.id("entries")),
     participants: v.array(clinicParticipantValidator),
     sourcePageId: v.optional(v.id("importPages")),
+    // How many the club will take. Absent means no limit, which is how the
+    // paper sheet behaves until someone draws a line.
+    capacity: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_org_and_date", ["orgId", "date"])
@@ -212,4 +227,60 @@ export default defineSchema({
   })
     .index("by_user", ["userId"])
     .index("by_endpoint", ["endpoint"]),
+
+  /**
+   * A coach asking for a day off or a cover. It is a request, not a change —
+   * the desk still owns the book, so this lands as something to action rather
+   * than as a hole in the schedule.
+   */
+  timeOffRequests: defineTable({
+    orgId: v.id("orgs"),
+    membershipId: v.id("memberships"),
+    date: v.string(),
+    startMin: v.optional(v.number()),
+    endMin: v.optional(v.number()),
+    reason: v.optional(v.string()),
+    status: v.union(
+      v.literal("open"),
+      v.literal("acknowledged"),
+      v.literal("declined"),
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_org_and_status", ["orgId", "status"])
+    .index("by_org_and_date", ["orgId", "date"]),
+
+  /**
+   * Every paid model call, one row, so a club's month has a hard ceiling
+   * instead of an open tab. Written by the same actions that spend the money.
+   */
+  aiUsage: defineTable({
+    orgId: v.id("orgs"),
+    // "YYYY-MM", so a month is one index key.
+    month: v.string(),
+    kind: v.union(
+      v.literal("vision"),
+      v.literal("agent"),
+      v.literal("voice"),
+      v.literal("insight"),
+    ),
+    costUsd: v.number(),
+    at: v.number(),
+  })
+    .index("by_org_and_month", ["orgId", "month"])
+    .index("by_org", ["orgId"]),
+
+  /**
+   * The rotating line on the Insights page. Generated once per club per day and
+   * cached — the whole point is that it costs about a hundredth of a cent, so
+   * regenerating it on every page load would be the only way to get that wrong.
+   */
+  insightCards: defineTable({
+    orgId: v.id("orgs"),
+    date: v.string(),
+    lines: v.array(v.string()),
+    model: v.string(),
+    costUsd: v.number(),
+    generatedAt: v.number(),
+  }).index("by_org_and_date", ["orgId", "date"]),
 });

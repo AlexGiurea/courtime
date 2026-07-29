@@ -124,6 +124,7 @@ export const applyCreate = internalMutation({
     endMin: v.number(),
     label: v.string(),
     proMembershipId: v.optional(v.id("memberships")),
+    seriesId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const sameDay = await ctx.db
@@ -152,6 +153,7 @@ export const applyCreate = internalMutation({
       label: args.label,
       proMembershipId: args.proMembershipId,
       source: "manual",
+      seriesId: args.seriesId,
       updatedAt: Date.now(),
     });
 
@@ -174,6 +176,123 @@ export const applyCreate = internalMutation({
     }
 
     return { ok: true as const, bookingId: entryId as string };
+  },
+});
+
+/**
+ * Add a name to a clinic's sheet. Capacity is honoured here rather than in the
+ * caller, so the sheet behaves the same whether a person or Tempo wrote on it:
+ * past the line you are on the waitlist, and you are told so.
+ */
+export const applyClinicSignup = internalMutation({
+  args: {
+    orgId: v.id("orgs"),
+    date: v.string(),
+    clinicTitle: v.string(),
+    name: v.string(),
+    phone: v.optional(v.string()),
+    rating: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    if (!args.name.trim()) return { ok: false as const, error: "Who am I adding?" };
+
+    const rosters = await ctx.db
+      .query("clinicRosters")
+      .withIndex("by_org_and_date", (q) =>
+        q.eq("orgId", args.orgId).eq("date", args.date),
+      )
+      .take(60);
+
+    const wanted = args.clinicTitle.trim().toLowerCase();
+    const roster =
+      rosters.find((r) => r.title.toLowerCase() === wanted) ??
+      rosters.find((r) => r.title.toLowerCase().includes(wanted));
+
+    if (!roster) {
+      return {
+        ok: false as const,
+        error: `There's no clinic called "${args.clinicTitle}" on ${args.date}.`,
+        clinicsThatDay: rosters.map((r) => r.title),
+      };
+    }
+
+    const already = roster.participants.some(
+      (p) => p.name.trim().toLowerCase() === args.name.trim().toLowerCase(),
+    );
+    if (already) {
+      return { ok: false as const, error: `${args.name} is already on that sheet.` };
+    }
+
+    const signedUp = roster.participants.filter((p) => !p.waitlisted).length;
+    const waitlisted = roster.capacity !== undefined && signedUp >= roster.capacity;
+
+    await ctx.db.patch("clinicRosters", roster._id, {
+      participants: [
+        ...roster.participants,
+        {
+          name: args.name.trim(),
+          phone: args.phone ?? null,
+          rating: args.rating ?? null,
+          note: null,
+          waitlisted: waitlisted ? true : undefined,
+        },
+      ],
+      updatedAt: Date.now(),
+    });
+
+    return {
+      ok: true as const,
+      clinic: roster.title,
+      waitlisted,
+      position: waitlisted
+        ? roster.participants.filter((p) => p.waitlisted).length + 1
+        : signedUp + 1,
+      capacity: roster.capacity ?? null,
+    };
+  },
+});
+
+/** A coach's request, which lands beside the desk rather than in the book. */
+export const applyTimeOff = internalMutation({
+  args: {
+    orgId: v.id("orgs"),
+    membershipId: v.id("memberships"),
+    date: v.string(),
+    startMin: v.optional(v.number()),
+    endMin: v.optional(v.number()),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const open = await ctx.db
+      .query("timeOffRequests")
+      .withIndex("by_org_and_date", (q) =>
+        q.eq("orgId", args.orgId).eq("date", args.date),
+      )
+      .take(50);
+    if (open.some((r) => r.membershipId === args.membershipId && r.status === "open")) {
+      return {
+        ok: true as const,
+        alreadyAsked: true,
+        note: "They already have a request in for that day — say so rather than raising a second.",
+      };
+    }
+
+    await ctx.db.insert("timeOffRequests", {
+      orgId: args.orgId,
+      membershipId: args.membershipId,
+      date: args.date,
+      startMin: args.startMin,
+      endMin: args.endMin,
+      reason: args.reason,
+      status: "open",
+      createdAt: Date.now(),
+    });
+
+    return {
+      ok: true as const,
+      alreadyAsked: false,
+      note: "Confirm it's been passed to the desk, and be clear the schedule hasn't changed yet.",
+    };
   },
 });
 
@@ -456,11 +575,113 @@ export const WRITE_TOOLS: AgentTool[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "move_courts",
+      description:
+        "Rain. Move every booking on some courts, on one day, onto other courts — keeping each booking's time. Anything that will not fit is reported back rather than dropped.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: { type: "string", description: "YYYY-MM-DD" },
+          fromCourts: {
+            type: "array",
+            items: { type: "string" },
+            description: "Court names to clear, e.g. ['Court 4','Court 5']",
+          },
+          toCourts: {
+            type: "array",
+            items: { type: "string" },
+            description: "Court names to move them onto, in order of preference",
+          },
+          afterTime: {
+            type: "string",
+            description: "Optional 24-hour HH:MM — only move bookings starting at or after this",
+          },
+        },
+        required: ["date", "fromCourts", "toCourts"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_recurring",
+      description:
+        "A standing lesson: the same booking every week for a number of weeks. Weeks that clash are skipped and reported, never forced.",
+      parameters: {
+        type: "object",
+        properties: {
+          startDate: { type: "string", description: "YYYY-MM-DD of the first one" },
+          weeks: { type: "number", description: "How many weeks in total, 2 to 52" },
+          courtName: { type: "string" },
+          startTime: { type: "string", description: "24-hour HH:MM" },
+          endTime: { type: "string", description: "24-hour HH:MM" },
+          label: { type: "string" },
+          coachName: { type: "string" },
+        },
+        required: ["startDate", "weeks", "courtName", "startTime", "endTime", "label"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_to_clinic",
+      description:
+        "Put someone on a clinic's sign-up sheet. If the clinic is full they go on the waitlist and you say so.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: { type: "string", description: "YYYY-MM-DD" },
+          clinicTitle: { type: "string", description: "e.g. 'Rising Stars'" },
+          name: { type: "string" },
+          phone: { type: "string" },
+          rating: { type: "string", description: "NTRP, e.g. '4.0'" },
+        },
+        required: ["date", "clinicTitle", "name"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+/**
+ * The one thing a coach's assistant may write, and it doesn't touch the book:
+ * it raises a request for the desk to deal with. A coach asking for Friday off
+ * out loud, and it landing somewhere the desk will see, beats a text message
+ * that gets lost — while the schedule itself stays the desk's alone.
+ */
+export const COACH_WRITE_TOOLS: AgentTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "request_time_off",
+      description:
+        "Ask the front desk for time off or a cover. This does NOT change the schedule — it raises a request the desk can see and action.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: { type: "string", description: "YYYY-MM-DD" },
+          startTime: { type: "string", description: "Optional 24-hour HH:MM" },
+          endTime: { type: "string", description: "Optional 24-hour HH:MM" },
+          reason: { type: "string", description: "Optional, one short line" },
+        },
+        required: ["date"],
+        additionalProperties: false,
+      },
+    },
+  },
 ];
 
 /** The tools a caller is allowed to see at all. A coach never gets the writes. */
 export function toolsFor(canWrite: boolean): AgentTool[] {
-  return canWrite ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
+  return canWrite
+    ? [...READ_TOOLS, ...WRITE_TOOLS]
+    : [...READ_TOOLS, ...COACH_WRITE_TOOLS];
 }
 
 export type ClubContext = {
@@ -630,6 +851,20 @@ export async function executeTool(
     };
   }
 
+  /* A coach's one write, taken before the gate below, because it doesn't touch
+     the schedule — it raises a request against it. */
+  if (name === "request_time_off") {
+    const result = await ctx.runMutation(internal.agent.applyTimeOff, {
+      orgId,
+      membershipId: club.membership._id,
+      date: String(parsed.date ?? todayIso),
+      startMin: minutesFrom(parsed.startTime) ?? undefined,
+      endMin: minutesFrom(parsed.endTime) ?? undefined,
+      reason: parsed.reason ? String(parsed.reason) : undefined,
+    });
+    return { result, changed: false };
+  }
+
   if (!canWrite) {
     return {
       result: { error: "Only the front desk can change the schedule." },
@@ -714,7 +949,166 @@ export async function executeTool(
     return { result, changed: result.ok };
   }
 
+  /* ---- rain. The one that earns its keep on a wet Tuesday. ---- */
+  if (name === "move_courts") {
+    const date = String(parsed.date ?? todayIso);
+    const from = asNames(parsed.fromCourts)
+      .map((n) => courtByName(club, n))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
+    const to = asNames(parsed.toCourts)
+      .map((n) => courtByName(club, n))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
+    if (!from.length || !to.length) {
+      return {
+        result: { error: "Name the courts to clear and the courts to move onto." },
+        changed: false,
+      };
+    }
+
+    const after = minutesFrom(parsed.afterTime);
+    const rows = await ctx.runQuery(internal.agent.bookingsOn, {
+      orgId,
+      startDate: date,
+      endDate: date,
+    });
+    // bookingsOn reports court names rather than ids, which is what the model
+    // sees too — so match on the same thing it does.
+    const fromNames = new Set(from.map((c) => c.name));
+    const moving = rows
+      .filter((r) => fromNames.has(r.court) && (after === null || r.startMin >= after))
+      .sort((a, b) => a.startMin - b.startMin);
+
+    // Track what each destination court is holding as we go, so two bookings
+    // from different courts can't be sent to the same slot.
+    const taken = new Map<string, { startMin: number; endMin: number }[]>();
+    for (const court of to) {
+      taken.set(
+        court.id,
+        rows
+          .filter((r) => r.court === court.name)
+          .map((r) => ({ startMin: r.startMin, endMin: r.endMin })),
+      );
+    }
+
+    const moved: string[] = [];
+    const stuck: string[] = [];
+
+    for (const booking of moving) {
+      const target = to.find((court) => {
+        const held = taken.get(court.id) ?? [];
+        return !held.some(
+          (span) => booking.startMin < span.endMin && booking.endMin > span.startMin,
+        );
+      });
+      if (!target) {
+        stuck.push(`${booking.label} at ${formatTime(booking.startMin)}`);
+        continue;
+      }
+      const result = await ctx.runMutation(internal.agent.applyUpdate, {
+        orgId,
+        userId,
+        entryId: booking.bookingId as Id<"entries">,
+        courtId: target.id as Id<"courts">,
+      });
+      if (result.ok) {
+        (taken.get(target.id) ?? []).push({
+          startMin: booking.startMin,
+          endMin: booking.endMin,
+        });
+        moved.push(`${booking.label} → ${target.name}`);
+      } else {
+        stuck.push(`${booking.label} at ${formatTime(booking.startMin)}`);
+      }
+    }
+
+    return {
+      result: {
+        movedCount: moved.length,
+        moved: moved.slice(0, 25),
+        couldNotMove: stuck.slice(0, 25),
+        note: stuck.length
+          ? "Tell them exactly which ones had nowhere to go — those still need a person."
+          : undefined,
+      },
+      changed: moved.length > 0,
+    };
+  }
+
+  /* ---- a standing lesson ---- */
+  if (name === "create_recurring") {
+    const court = courtByName(club, parsed.courtName);
+    if (!court) return { result: { error: "I don't know that court." }, changed: false };
+    const startMin = minutesFrom(parsed.startTime);
+    const endMin = minutesFrom(parsed.endTime);
+    if (startMin === null || endMin === null || endMin <= startMin) {
+      return { result: { error: "Give me a start and end time." }, changed: false };
+    }
+    const weeks = Math.max(2, Math.min(52, Math.round(Number(parsed.weeks) || 0)));
+    const coach = coachByName(club, parsed.coachName);
+    const seriesId = `series_${Date.now()}_${Math.round(startMin)}`;
+    const first = String(parsed.startDate ?? todayIso);
+
+    const booked: string[] = [];
+    const skipped: string[] = [];
+
+    for (let week = 0; week < weeks; week += 1) {
+      const date = addDaysIso(first, week * 7);
+      const result = await ctx.runMutation(internal.agent.applyCreate, {
+        orgId,
+        userId,
+        date,
+        courtId: court.id as Id<"courts">,
+        startMin,
+        endMin,
+        label: String(parsed.label ?? "Private"),
+        proMembershipId: coach ? (coach.id as Id<"memberships">) : undefined,
+        seriesId,
+      });
+      if (result.ok) booked.push(date);
+      else skipped.push(date);
+    }
+
+    return {
+      result: {
+        bookedCount: booked.length,
+        firstDate: booked[0] ?? null,
+        lastDate: booked[booked.length - 1] ?? null,
+        skipped,
+        note: skipped.length
+          ? "Say how many went on and which dates were already taken."
+          : undefined,
+      },
+      changed: booked.length > 0,
+    };
+  }
+
+  /* ---- the sign-up sheet ---- */
+  if (name === "add_to_clinic") {
+    const result = await ctx.runMutation(internal.agent.applyClinicSignup, {
+      orgId,
+      date: String(parsed.date ?? todayIso),
+      clinicTitle: String(parsed.clinicTitle ?? ""),
+      name: String(parsed.name ?? ""),
+      phone: parsed.phone ? String(parsed.phone) : undefined,
+      rating: parsed.rating ? String(parsed.rating) : undefined,
+    });
+    return { result, changed: Boolean((result as { ok?: boolean }).ok) };
+  }
+
   return { result: { error: `Unknown tool ${name}` }, changed: false };
+}
+
+function asNames(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map((v) => String(v));
+  if (typeof value === "string" && value.trim()) return [value];
+  return [];
+}
+
+/** Date maths on the "YYYY-MM-DD" strings the whole app uses as keys. */
+function addDaysIso(iso: string, days: number): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
 }
 
 /** Parse-then-dispatch, so both entry points fail the same way on bad JSON. */
