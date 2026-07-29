@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from "react";
-import { Navigate, NavLink, Route, Routes } from "react-router-dom";
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from "react-router-dom";
 import {
   Authenticated,
   AuthLoading,
@@ -14,6 +14,7 @@ import SignIn from "./screens/SignIn";
 import Onboarding from "./screens/Onboarding";
 import DeskApp from "./desk/DeskApp";
 import ProApp from "./pro/ProApp";
+import AgentDock from "./agent/AgentDock";
 import { Avatar, BrandMark, Loading } from "./ui";
 
 export type Session = Extract<
@@ -58,27 +59,30 @@ function SignedIn() {
   const deskAllowed = scoped.membership.role !== "pro";
 
   return (
-    <Routes>
-      <Route
-        path="/desk/*"
-        element={
-          deskAllowed ? <DeskApp session={scoped} /> : <Navigate to="/me" replace />
-        }
-      />
-      <Route
-        path="/me/*"
-        element={
-          <div className="shell">
-            <TopBar session={scoped} />
-            <ProApp />
-          </div>
-        }
-      />
-      <Route
-        path="*"
-        element={<Navigate to={deskAllowed ? "/desk" : "/me"} replace />}
-      />
-    </Routes>
+    <>
+      <Routes>
+        <Route
+          path="/desk/*"
+          element={
+            deskAllowed ? <DeskApp session={scoped} /> : <Navigate to="/me" replace />
+          }
+        />
+        <Route
+          path="/me/*"
+          element={
+            <div className="shell">
+              <TopBar session={scoped} />
+              <ProApp />
+            </div>
+          }
+        />
+        <Route
+          path="*"
+          element={<Navigate to={deskAllowed ? "/desk" : "/me"} replace />}
+        />
+      </Routes>
+      <AgentDock />
+    </>
   );
 }
 
@@ -90,7 +94,9 @@ export function TopBar({
   children?: ReactNode;
 }) {
   const { signOut } = useAuthActions();
+  const location = useLocation();
   const deskAllowed = session.membership.role !== "pro";
+  const onCoachSide = location.pathname.startsWith("/me");
 
   return (
     <header className="topbar no-print">
@@ -99,8 +105,10 @@ export function TopBar({
         Courtime
       </span>
 
+      {/* The club's navigation stays about the club. A director who also
+          coaches reaches their own hours through the view switch, not a tab. */}
       <nav className="topnav">
-        {deskAllowed ? (
+        {deskAllowed && !onCoachSide ? (
           <>
             <NavLink to="/desk" end className={({ isActive }) => (isActive ? "active" : "")}>
               Schedule
@@ -125,13 +133,15 @@ export function TopBar({
             </NavLink>
           </>
         ) : null}
-        <NavLink to="/me" end className={({ isActive }) => (isActive ? "active" : "")}>
-          My schedule
-        </NavLink>
       </nav>
 
       <div className="topbar-right">
         {children}
+        {deskAllowed ? (
+          <Link className="btn ghost sm view-switch" to={onCoachSide ? "/desk" : "/me"}>
+            {onCoachSide ? "Back to the front desk" : "View as coach"}
+          </Link>
+        ) : null}
         <span className="tag org-tag">{session.org.name}</span>
         <span className="who" title={session.user.email}>
           <Avatar

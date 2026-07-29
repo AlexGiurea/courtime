@@ -75,6 +75,25 @@ One `createClub` mutation writes the org, courts and memberships in a single tra
 half-built club cannot exist. The creator becomes `admin`. New clubs start on the Pro plan so the
 whole product is visible; Settings switches tiers freely.
 
+### 4.05 Tempo, the assistant (Pro) — a dock on every signed-in surface
+
+A launcher sits bottom-right; clicking it raises a panel out of that corner. **Tempo** is Courtime's
+own character — the Courtime mark (a rounded court with a net) given eyes and a clock hand, so it
+reads as "the thing that keeps the club's time". It shares nothing with Breakpoint's Ace.
+
+- **Real tools, not a chat veneer.** `list_bookings`, `find_open_slots`, `coach_hours` for reading;
+  `create_booking`, `move_booking`, `cancel_booking` for writing. Every tool runs through the same
+  internal mutations the UI uses, so double-booking rejection, the `entryChanges` audit row and the
+  coach's push alert all fire identically whether a human or Tempo made the change.
+- **Role-scoped at the source.** A coach's request never even receives the write tools, and
+  `list_bookings` is filtered to their own column. This is enforced server-side, not by asking the
+  model nicely.
+- **Pro-gated** in `agent.availability`, so the launcher does not render at all on Free.
+- Conversation lives in client state and is passed back each turn (last 12 messages) — no threads
+  table in v1.
+- Implementation note: this model family rejects function tools unless `reasoning_effort` is
+  `"none"` on `/v1/chat/completions`. The vision importer keeps `"low"` because it sends no tools.
+
 ### 4.1 Desk app (`/desk`) — desktop/tablet browser
 - **Day grid:** time rows (configurable day window, 30-min granularity) × court columns. Mirrors
   the paper page visually.
@@ -89,6 +108,9 @@ whole product is visible; Settings switches tiers freely.
   paper book's format). First-class feature, not an afterthought (see §2).
 - **Live updates:** free with Convex — `useQuery` subscriptions are reactive, so the grid updates
   the moment any client mutates. No polling code. Show a subtle "live" indicator.
+- **The nav stays about the club.** Schedule · Import · Insights · Settings, and nothing else. A
+  director who also coaches reaches their own hours through a quiet "View as coach" switch beside
+  the avatar — never a nav tab, because the club view must not be framed around one person's day.
 
 ### 4.2 Pro app (`/me`) — mobile-first PWA
 - **My day / My week:** list of the signed-in pro's entries (time, what, court). Google-Calendar-ish
@@ -235,14 +257,12 @@ Convex tables (documents + indexes; times stored as minutes-from-midnight, 30-mi
 | Today-at-a-glance counts (bookings, coached hours, courts in use) | ✅ | ✅ |
 | Insights: court utilisation, coach load, busiest hours over any period | — | ✅ **built** |
 | Payroll/hours export (CSV per coach per period) | — | ✅ **built** (likely #1 closer) |
+| **Tempo**, the assistant — natural-language read *and* write over the schedule | — | ✅ **built** |
 | Smart notifications (digests, rules, client-facing) | — | roadmap |
-| AI assistant (read-write chat over the calendar, in the palette) | — | roadmap |
 
-The MVP ships the whole Free column **plus two real Pro features** — insights and the hours
-export. That is deliberate: a paid tier made only of promises can't be demonstrated, and these two
-are pure functions of data already in the database, so they cost nothing external to run. The
-assistant and smart notifications stay on the roadmap and are not advertised inside the app as
-though they exist.
+The MVP ships the whole Free column **plus three real Pro features** — insights, the hours export,
+and the assistant. That is deliberate: a paid tier made only of promises can't be demonstrated.
+Smart notifications stay on the roadmap and are not advertised inside the app as though they exist.
 
 Gating is enforced in **both** places: `schedule.range` refuses to return data when the club is on
 Free, and the Insights screen renders an explanation of what Pro adds instead of a dead end.
@@ -317,8 +337,8 @@ a change alert to Danny's phone.
 - Never lead with "AI." Lead with "your schedule, on every phone, always current." The AI is
   plumbing.
 
-## 11. v2 backlog (do NOT build in MVP)
+## 11. v2 backlog
 
-Agent in palette (read-write) · smart notifications · analytics surface · payroll export ·
-Stripe billing + plan enforcement · Gemini bake-off automation · batch re-snap diffing (detect
-what changed on a re-photographed page) · desk edit from mobile · multi-club UI · dark mode.
+Smart notifications (digests, rules) · Stripe billing · Gemini bake-off automation · batch re-snap
+diffing (detect what changed on a re-photographed page) · desk edit from mobile · multi-club UI ·
+dark mode · persisted assistant threads (today the conversation lives in the client only).

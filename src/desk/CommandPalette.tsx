@@ -97,7 +97,7 @@ export default function CommandPalette({
       },
       {
         id: "mine",
-        label: "My own schedule",
+        label: "Switch to the coach view",
         run: () => {
           navigate("/me");
           onClose();

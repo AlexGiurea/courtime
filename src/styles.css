@@ -370,7 +370,8 @@ textarea {
 
   .topnav,
   .org-tag,
-  .who-name {
+  .who-name,
+  .view-switch {
     display: none;
   }
 }

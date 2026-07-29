@@ -68,6 +68,19 @@ for payroll.
 
 ![Insights](docs/media/desk-insights.png)
 
+## Tempo
+
+Pro clubs also get **Tempo**, an assistant that reads *and* changes the schedule from plain
+language — "book a one hour private with Danny on Court 6 tomorrow at 8am", "who's free Thursday at
+4?", "how many hours did each coach teach this week?"
+
+It isn't a chat veneer over a help page. Tempo's tools run through the same mutations the UI uses,
+so a booking it creates rejects double-bookings, writes the same audit row, and fires the same push
+alert to the coach's phone. A coach's Tempo is never handed the write tools at all, and only ever
+sees their own column — enforced on the server, not by asking the model nicely.
+
+![Tempo booking a lesson](docs/media/agent-tempo.png)
+
 ## Built with
 
 | | |
