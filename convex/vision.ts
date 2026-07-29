@@ -13,21 +13,39 @@ const MODEL_PRICING: Record<string, { input: number; output: number }> = {
 
 const DEFAULT_MODEL = "gpt-5.6-luna";
 
-// Ported from Breakpoint's schedule importer: every rule in here was earned by
-// a real page that the model previously got wrong.
+/**
+ * The club's book is double-sided: a court grid on the front, a clinic sign-up
+ * sheet on the back. One prompt reads either, and says which it read — a
+ * separate classification call would double the cost for no accuracy.
+ *
+ * The court-grid rules are ported from Breakpoint's importer; every one of them
+ * was earned by a real page the model previously got wrong.
+ */
 const SYSTEM_PROMPT = `You are a precise data-extraction engine for Courtime, a racquet club scheduling app.
-You are given a PHOTO of a hand-written daily court schedule (a grid). Read it slowly and carefully, then return STRICTLY valid JSON.
+You are given a PHOTO of ONE page from a club's paper schedule book. Read it slowly and carefully, then return STRICTLY valid JSON.
+
+FIRST, DECIDE WHICH PAGE THIS IS — set "pageKind":
+- "schedule" — a COURT GRID: columns are courts (1, 2, 3, …, maybe "Stadium" or "Special Events"), rows are 30-minute time slots, with time gutters down the far left and far right. It usually has a date and day of the week at the top, and a NOTES column on the far right.
+- "clinics" — a SIGN-UP SHEET: several separate boxed tables, each with a heading like "Adult Clinic - 8 AM", "Rising Stars - 3:00pm-4:00pm" or "Elite - 4:00pm-5:00pm", and numbered rows with columns "Name" and "Phone #". There is usually NO date anywhere on this page.
+
+============================================================
+IF "pageKind" IS "schedule"
+============================================================
 
 LAYOUT
-- The grid has one COLUMN per court, numbered 1, 2, 3, … There may be extra columns such as "Stadium" or "Special Events" — treat their name as the court.
-- The FAR-LEFT and FAR-RIGHT columns are TIME GUTTERS. Every ROW is a 30-MINUTE slot: 7:00, 7:30, 8:00, 8:30, 9:00 … Read each row's time from the LEFT gutter.
+- One COLUMN per court. Extra columns such as "Stadium" or "Special Events" — treat their name as the court.
+- The FAR-LEFT and FAR-RIGHT columns are TIME GUTTERS. Every ROW is a 30-MINUTE slot: 7:00, 7:30, 8:00, 8:30 … Read each row's time from the LEFT gutter.
 - On the FIRST line of a court column (above the first time slot) there may be a COACH NAME for that court.
+- The far-right "NOTES" column is free text about the day, not bookings. Put its contents in "dayNotes" and never as sessions.
 
 COACHES — read this carefully
 - The name at the TOP of a numbered court column is the coach who runs EVERY booking on that court that day. List these in "courtCoaches" (one entry per court that HAS a name).
 - If a court column has NO name at the top, that court has NO coach: the bookings are players who reserved the court themselves (self-play). For every booking on a court with no coach, set "coach" to null. NEVER invent, guess, or borrow a coach for these.
-- Inside a cell, "w/ <name>" or "w/ pro" only re-states that court's coach. Do NOT make a new coach from it — set the booking's "coach" to null so it inherits the court coach.
-- Short letters in circles/boxes (RS, T, M, C, ER, PS, H, …) are STATUS CODES — never a coach, never a title. Put them in "notes".
+- Inside a cell, "w/ pro" or "w/ <name>" only re-states that court's coach. Do NOT make a new coach from it — set that booking's "coach" to null so it inherits the court coach.
+- Short letters in circles or boxes (RS, T, M, C, ER, PS, H, …) are STATUS CODES — never a coach, never a title. Put them in "notes".
+
+THE ASTERISK — this matters
+- A star or asterisk (often in red) beside a booking means the client REQUESTED that specific pro by name. Set "requested": true for that booking. If there is no star, set it false. Do not confuse a star with a status-code circle.
 
 TIMES & DURATION — read this carefully
 - A booking starts in the slot where its writing begins; read that row's time from the LEFT gutter.
@@ -35,14 +53,31 @@ TIMES & DURATION — read this carefully
     - one slot starting at 8:00 -> 08:00-08:30
     - "Clinic" with a down-arrow covering the 8:00 and 8:30 rows -> 08:00-09:00 (one hour)
     - an entry covering 8:30, 9:00, 9:30 -> 08:30-10:00
-- Two SEPARATE entries stacked in one column are SEPARATE bookings — NEVER merge them. e.g. "Clinic" 08:00-09:00 and another "Clinic" 09:00-10:00 are TWO one-hour clinics.
+- Two SEPARATE entries stacked in one column are SEPARATE bookings — NEVER merge them.
 - "BREAK" rows are not bookings — skip them.
+- Phone numbers written under a name belong in "notes", not in the title.
+
+============================================================
+IF "pageKind" IS "clinics"
+============================================================
+
+- Return one object in "clinics" for EVERY clinic table on the page, even one with no names in it (return it with an empty participants list).
+- "title" is the heading exactly as written, e.g. "Adult Clinic - 8 AM".
+- Read the time from the heading into startTime/endTime where it gives one ("Rising Stars - 3:00pm-4:00pm" -> 15:00 to 16:00). "Adult Clinic - 8 AM" gives a start of 08:00 and a null end.
+- Each numbered row that has a name is one participant. Ignore empty numbered rows entirely.
+- A number pencilled in the LEFT MARGIN beside a row (4.0, 3.5, 3.35) is that player's NTRP rating — put it in "rating", never in the name.
+- Circled letters beside a row are status codes — put them in "note".
+- A row reading "SEE CARD" or similar is not a person; skip it.
+- Leave "sessions", "courtCoaches" and "dayNotes" empty on a clinics page. There is no date on this page: set "date" to null unless one is genuinely written there.
+
+============================================================
 
 Return ONLY this JSON object (no prose, no code fences):
 {
+  "pageKind": "schedule" | "clinics",
   "date": "YYYY-MM-DD or null",
-  "dayOfWeek": "e.g. Monday, or null",
-  "courtCoaches": [ { "court": "1", "coach": "Valentina" } ],
+  "dayOfWeek": "e.g. Wednesday, or null",
+  "courtCoaches": [ { "court": "1", "coach": "Sofia" } ],
   "sessions": [
     {
       "court": "1",
@@ -51,20 +86,32 @@ Return ONLY this JSON object (no prose, no code fences):
       "title": "the player or clinic name",
       "coach": null,
       "sessionType": "Private | Group | Clinic | Camp | null",
-      "notes": "status codes / extra text, or null",
+      "notes": "phone numbers, status codes, extra text, or null",
+      "requested": false,
       "legible": true
     }
   ],
+  "clinics": [
+    {
+      "title": "Adult Clinic - 8 AM",
+      "startTime": "08:00",
+      "endTime": null,
+      "participants": [
+        { "name": "Jack Seigel", "phone": "703 577 9967", "rating": "4.0", "note": null }
+      ]
+    }
+  ],
+  "dayNotes": "text from the NOTES column, or null",
   "warnings": [ "anything ambiguous or unreadable" ]
 }
 
 RULES
-- 24-hour times ("8:00 AM" -> "08:00", "2:30 PM" -> "14:30"). ALWAYS fill endTime from the slots covered.
+- 24-hour times ("8:00 AM" -> "08:00", "2:30 PM" -> "14:30"). ALWAYS fill endTime for sessions from the slots covered.
 - "Clinic" -> Clinic; "Group" / "Rising Stars" / "Elites" -> Group; "Camp" -> Camp; a person's name with no group word -> Private.
-- "coach" is null on every coach-less court and whenever the cell only says "w/ pro" or "w/ <the court coach>". Only put a name in "coach" if a DIFFERENT, explicitly-named coach runs that one booking.
-- Set "legible" to false for any booking you had to guess at, so a human can check it.
-- Do NOT invent bookings. Skip empty cells and BREAK rows. If a name is unreadable, still include the booking with title "(unreadable)" and add a warning.
-- If a provided known-coach name clearly matches a scribbled top-of-column name, use the known spelling.
+- Set "legible" to false for anything you had to guess at, so a human can check it.
+- Do NOT invent bookings or participants. Skip empty cells and rows.
+- If a name is unreadable, still include it with title "(unreadable)" and add a warning.
+- If a provided known-coach name clearly matches a scribbled name, use the known spelling.
 - Output ONLY the JSON object.`;
 
 function parseJsonLoose(text: string): Record<string, unknown> {
@@ -147,15 +194,19 @@ function matchCoach(
   return partial?._id;
 }
 
+function asText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
 /**
- * Read one photographed page into draft bookings.
+ * Read one photographed page into drafts.
  *
  * Verification is deliberately deterministic rather than a second model call:
  * the failure modes that matter here (a court that does not exist, a time
  * outside the club's day, a span that ends before it starts, two bookings on
  * one court at once, handwriting the model itself flagged) are all decidable in
  * code. That is cheaper, faster, and — unlike an LLM critic — cannot itself
- * hallucinate. Anything it flags becomes a highlighted cell for the human
+ * hallucinate. Anything it flags becomes a highlighted row for the human
  * reviewer; nothing here publishes on its own.
  */
 export const processPage = internalAction({
@@ -196,17 +247,18 @@ export const processPage = internalAction({
         .map((m) => m.displayName);
 
       const userText = [
+        "First decide whether this is the court grid or the clinic sign-up sheet, then extract accordingly.",
         context.page.dateHint
-          ? `This page is believed to be for ${context.page.dateHint} — use it to resolve the year.`
-          : "Read the date written on the page if there is one.",
+          ? `If this is a court grid, it is believed to be for ${context.page.dateHint} — use that to resolve the year.`
+          : "If this is a court grid, read the date written at the top of the page.",
         `This club has ${context.courts.length} courts named: ${context.courts
           .map((c) => c.name)
           .join(", ")}.`,
         coachNames.length
           ? `Known coaches (prefer these spellings when a scribble matches one): ${coachNames.join(", ")}.`
           : null,
-        "Reminders: a court with NO name at the top has NO coach (self-play) — leave those coaches null. A label with a down-arrow is one session covering two 30-minute slots (one hour); two separate labels are two separate sessions.",
-        "Extract the full schedule from this image as JSON.",
+        "Reminders: a court with NO name at the top has NO coach (self-play) — leave those coaches null. A label with a down-arrow is one session covering two 30-minute slots (one hour); two separate labels are two separate sessions. A star beside a booking means the client requested that pro.",
+        "Extract this page as JSON.",
       ]
         .filter(Boolean)
         .join("\n");
@@ -254,6 +306,22 @@ export const processPage = internalAction({
       const data = await response.json();
       const parsed = parseJsonLoose(data?.choices?.[0]?.message?.content ?? "{}");
 
+      const clinicsRaw = Array.isArray(parsed.clinics) ? parsed.clinics : [];
+      const sessionsRaw = Array.isArray(parsed.sessions)
+        ? (parsed.sessions as Record<string, unknown>[])
+        : [];
+
+      // Trust the model's own label, but fall back to what it actually
+      // returned — a sheet full of clinics and no sessions is a clinics page
+      // whatever it called itself.
+      const declared = parsed.pageKind === "clinics" ? "clinics" : "schedule";
+      const pageKind: "schedule" | "clinics" =
+        declared === "clinics" && sessionsRaw.length > clinicsRaw.length
+          ? "schedule"
+          : declared === "schedule" && clinicsRaw.length > 0 && sessionsRaw.length === 0
+            ? "clinics"
+            : declared;
+
       const courtCoachesRaw = Array.isArray(parsed.courtCoaches)
         ? (parsed.courtCoaches as { court?: unknown; coach?: unknown }[])
         : [];
@@ -267,10 +335,6 @@ export const processPage = internalAction({
       const dayStart = context.org?.dayStartMin ?? 0;
       const dayEnd = context.org?.dayEndMin ?? 24 * 60;
 
-      const sessionsRaw = Array.isArray(parsed.sessions)
-        ? (parsed.sessions as Record<string, unknown>[])
-        : [];
-
       const drafts: {
         courtName: string;
         startMin: number;
@@ -279,6 +343,7 @@ export const processPage = internalAction({
         coachName: string | null;
         sessionType: string | null;
         notes: string | null;
+        requested: boolean;
         confidence: "high" | "low";
         issue: string | null;
         suggestedCourtId?: Id<"courts">;
@@ -287,70 +352,99 @@ export const processPage = internalAction({
 
       const claimed: { courtKey: string; startMin: number; endMin: number }[] = [];
 
-      for (const session of sessionsRaw) {
-        const courtName =
-          typeof session.court === "string" ? session.court.trim() : "";
-        const startMin = toMinutes(session.startTime);
-        let endMin = toMinutes(session.endTime);
-        const label =
-          typeof session.title === "string" && session.title.trim()
-            ? session.title.trim()
-            : "(unreadable)";
+      if (pageKind === "schedule") {
+        for (const session of sessionsRaw) {
+          const courtName =
+            typeof session.court === "string" ? session.court.trim() : "";
+          const startMin = toMinutes(session.startTime);
+          let endMin = toMinutes(session.endTime);
+          const label =
+            typeof session.title === "string" && session.title.trim()
+              ? session.title.trim()
+              : "(unreadable)";
 
-        if (startMin === null) continue;
-        if (endMin === null || endMin <= startMin) endMin = startMin + 30;
+          if (startMin === null) continue;
+          if (endMin === null || endMin <= startMin) endMin = startMin + 30;
 
-        const explicitCoach =
-          typeof session.coach === "string" && session.coach.trim()
-            ? session.coach.trim()
-            : null;
-        const inheritedCoach = coachByCourt.get(normalize(courtName)) ?? null;
-        const coachName = explicitCoach ?? inheritedCoach;
+          const explicitCoach = asText(session.coach);
+          const inheritedCoach = coachByCourt.get(normalize(courtName)) ?? null;
+          const coachName = explicitCoach ?? inheritedCoach;
 
-        const suggestedCourtId = matchCourt(courtName, context.courts);
-        const suggestedProId = matchCoach(coachName, context.members);
+          const suggestedCourtId = matchCourt(courtName, context.courts);
+          const suggestedProId = matchCoach(coachName, context.members);
 
-        // Deterministic verification — every branch here becomes a highlighted
-        // cell the reviewer must look at before the page can publish.
-        const issues: string[] = [];
-        if (!suggestedCourtId) issues.push(`No court named "${courtName || "?"}"`);
-        if (startMin < dayStart || endMin > dayEnd) {
-          issues.push("Outside the club's hours");
+          // Deterministic verification — every branch here becomes a
+          // highlighted row the reviewer must look at before publishing.
+          const issues: string[] = [];
+          if (!suggestedCourtId) issues.push(`No court named "${courtName || "?"}"`);
+          if (startMin < dayStart || endMin > dayEnd) {
+            issues.push("Outside the club's hours");
+          }
+          if (startMin % 30 !== 0 || endMin % 30 !== 0) {
+            issues.push("Not on the 30-minute grid");
+          }
+          if (label === "(unreadable)") issues.push("Handwriting unclear");
+          if (session.legible === false) issues.push("Model was unsure");
+          if (coachName && !suggestedProId) {
+            issues.push(`"${coachName}" is not on the staff list`);
+          }
+
+          const courtKey = suggestedCourtId
+            ? (suggestedCourtId as string)
+            : normalize(courtName);
+          const overlap = claimed.find(
+            (c) =>
+              c.courtKey === courtKey && startMin < c.endMin && endMin > c.startMin,
+          );
+          if (overlap) issues.push("Overlaps another booking on this court");
+          claimed.push({ courtKey, startMin, endMin });
+
+          drafts.push({
+            courtName: courtName || "?",
+            startMin,
+            endMin,
+            label,
+            coachName,
+            sessionType: asText(session.sessionType),
+            notes: asText(session.notes),
+            requested: session.requested === true,
+            confidence: issues.length ? "low" : "high",
+            issue: issues.length ? issues.join(" · ") : null,
+            suggestedCourtId,
+            suggestedProId,
+          });
         }
-        if (startMin % 30 !== 0 || endMin % 30 !== 0) {
-          issues.push("Not on the 30-minute grid");
-        }
-        if (label === "(unreadable)") issues.push("Handwriting unclear");
-        if (session.legible === false) issues.push("Model was unsure");
-        if (coachName && !suggestedProId) {
-          issues.push(`"${coachName}" is not on the staff list`);
-        }
-
-        const courtKey = suggestedCourtId
-          ? (suggestedCourtId as string)
-          : normalize(courtName);
-        const overlap = claimed.find(
-          (c) =>
-            c.courtKey === courtKey && startMin < c.endMin && endMin > c.startMin,
-        );
-        if (overlap) issues.push("Overlaps another booking on this court");
-        claimed.push({ courtKey, startMin, endMin });
-
-        drafts.push({
-          courtName: courtName || "?",
-          startMin,
-          endMin,
-          label,
-          coachName,
-          sessionType:
-            typeof session.sessionType === "string" ? session.sessionType : null,
-          notes: typeof session.notes === "string" ? session.notes : null,
-          confidence: issues.length ? "low" : "high",
-          issue: issues.length ? issues.join(" · ") : null,
-          suggestedCourtId,
-          suggestedProId,
-        });
       }
+
+      const clinicDrafts =
+        pageKind === "clinics"
+          ? (clinicsRaw as Record<string, unknown>[]).map((clinic) => {
+              const participantsRaw = Array.isArray(clinic.participants)
+                ? (clinic.participants as Record<string, unknown>[])
+                : [];
+              const participants = participantsRaw
+                .filter((p) => asText(p.name))
+                .map((p) => ({
+                  name: String(asText(p.name)),
+                  phone: asText(p.phone),
+                  rating: asText(p.rating),
+                  note: asText(p.note),
+                }));
+              const startMin = toMinutes(clinic.startTime);
+              const endMin = toMinutes(clinic.endTime);
+              const title = asText(clinic.title) ?? "Clinic";
+              const issues: string[] = [];
+              if (startMin === null) issues.push("No time in the heading");
+              if (!participants.length) issues.push("Nobody signed up");
+              return {
+                title,
+                startMin,
+                endMin,
+                participants,
+                issue: issues.length ? issues.join(" · ") : null,
+              };
+            })
+          : [];
 
       const usage = data?.usage ?? {};
       const inputTokens = Number(usage.prompt_tokens) || 0;
@@ -368,12 +462,17 @@ export const processPage = internalAction({
       const detectedDate =
         typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date)
           ? parsed.date
-          : context.page.dateHint;
+          : pageKind === "schedule"
+            ? context.page.dateHint
+            : undefined;
 
       await ctx.runMutation(internal.imports.saveExtraction, {
         pageId: args.pageId,
+        pageKind,
         detectedDate,
         draftEntries: drafts,
+        clinicDrafts,
+        dayNotes: asText(parsed.dayNotes) ?? undefined,
         courtCoaches,
         warnings,
         model,

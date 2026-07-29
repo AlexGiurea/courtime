@@ -5,6 +5,8 @@ import { Doc, Id } from "../../convex/_generated/dataModel";
 import { SessionWithClub } from "../App";
 import { Modal, useGuarded } from "../ui";
 import { SLOT_MIN, formatDateLong, formatTime, timeOptions } from "../lib/time";
+import { EntryRoster, hasRoster } from "./RosterPanel";
+import { AsteriskMark } from "./marks";
 
 const SESSION_TYPES = ["Private", "Group", "Clinic", "Camp", "Member play"];
 
@@ -43,7 +45,10 @@ export default function EntryDialog({
   );
   const [sessionType, setSessionType] = useState(editing?.sessionType ?? "Private");
   const [notes, setNotes] = useState(editing?.notes ?? "");
+  const [requested, setRequested] = useState(Boolean(editing?.requested));
   const [busy, setBusy] = useState(false);
+
+  const canEdit = session.membership.role !== "pro";
 
   const sourceUrl = useQuery(
     api.imports.pagePhotoUrl,
@@ -67,6 +72,7 @@ export default function EntryDialog({
           proMembershipId: proId ? (proId as Id<"memberships">) : null,
           sessionType,
           notes: notes.trim(),
+          requested,
         });
       } else {
         await createEntry({
@@ -78,6 +84,7 @@ export default function EntryDialog({
           proMembershipId: proId ? (proId as Id<"memberships">) : undefined,
           sessionType,
           notes: notes.trim() || undefined,
+          requested: requested || undefined,
         });
       }
       return true;
@@ -231,6 +238,26 @@ export default function EntryDialog({
         </select>
       </div>
 
+      <label
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          fontSize: 13,
+          cursor: "pointer",
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={requested}
+          onChange={(e) => setRequested(e.target.checked)}
+        />
+        <span style={{ color: "var(--warn)", display: "flex" }}>
+          <AsteriskMark size={12} />
+        </span>
+        Requested — this client asked for this pro by name
+      </label>
+
       <div className="field">
         <label htmlFor="notes">Notes</label>
         <input
@@ -241,6 +268,13 @@ export default function EntryDialog({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
+
+      {editing && hasRoster(sessionType) ? (
+        <div className="field">
+          <label>Sign-up sheet</label>
+          <EntryRoster entry={editing} canEdit={canEdit} />
+        </div>
+      ) : null}
 
       {editing?.source === "import" ? (
         <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>

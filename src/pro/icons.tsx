@@ -79,6 +79,15 @@ export function ShareIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** The red asterisk beside a lesson on the paper page — drawn, never an emoji. */
+export function AsteriskIcon({ size = 12 }: IconProps) {
+  return (
+    <svg {...frame(size)} viewBox="0 0 12 12" strokeWidth={1.5}>
+      <path d="M6 1.8v8.4M2.36 3.9l7.28 4.2M2.36 8.1l7.28-4.2" />
+    </svg>
+  );
+}
+
 export function CloseIcon({ size = 14 }: IconProps) {
   return (
     <svg {...frame(size)} strokeWidth={1.8}>

@@ -1,0 +1,585 @@
+/* Desk-side additions on top of the shared design system in src/styles.css.
+   Nothing here introduces a colour or a type size that isn't already a token —
+   these are layout details and the two motions the desk actually needs: turning
+   the page over, and sliding the notes column in. */
+
+/* ---------- the two faces of the page ---------- */
+
+.face-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--wash);
+}
+
+.face-switch button {
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.face-switch button:hover {
+  color: var(--ink);
+}
+
+.face-switch button[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* The page turn. Only transform and opacity animate, and only one face is ever
+   mounted — the sheet rotates edge-on, the content swaps while it is invisible,
+   then it rotates back. `--turn` carries the direction so going back to the
+   grid reads as turning the page the other way. */
+.flip-stage {
+  perspective: 1600px;
+  transform-style: preserve-3d;
+}
+
+.flip-face.turning-out {
+  animation: page-turn-out 150ms cubic-bezier(0.4, 0, 0.9, 0.4) forwards;
+  will-change: transform, opacity;
+}
+
+.flip-face.turning-in {
+  animation: page-turn-in 170ms cubic-bezier(0.1, 0.6, 0.3, 1);
+  will-change: transform, opacity;
+}
+
+@keyframes page-turn-out {
+  from {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+  to {
+    transform: rotateY(calc(var(--turn, 1) * -58deg));
+    opacity: 0;
+  }
+}
+
+@keyframes page-turn-in {
+  from {
+    transform: rotateY(calc(var(--turn, 1) * 58deg));
+    opacity: 0;
+  }
+  to {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes face-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes face-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* A plain crossfade when the desk has asked the OS for less motion. The
+   durations stay identical so the swap still lands in the invisible moment. */
+@media (prefers-reduced-motion: reduce) {
+  .flip-face.turning-out {
+    animation-name: face-fade-out;
+  }
+
+  .flip-face.turning-in {
+    animation-name: face-fade-in;
+  }
+
+  .notes-rail {
+    animation: none;
+  }
+}
+
+/* ---------- the asterisk and the grab handle on a chip ---------- */
+
+.entry .entry-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.entry .entry-line .entry-label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Reserved whether or not the mark is showing, so revealing it on hover never
+   reflows the label. */
+.entry-req {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 3px;
+  color: var(--warn);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 120ms ease,
+    background 120ms ease;
+}
+
+.entry-req.on,
+.entry:hover .entry-req,
+.entry-req:focus-visible {
+  opacity: 1;
+}
+
+.entry-req:not(.on) {
+  color: var(--faint);
+}
+
+.entry-req:hover {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.entry-star {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  margin-top: 1px;
+  color: var(--warn);
+  display: grid;
+  place-items: center;
+}
+
+.entry-grip {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.entry-grip::after {
+  content: "";
+  width: 22px;
+  height: 2px;
+  margin-bottom: 2px;
+  border-radius: 1px;
+  background: var(--line-strong);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.entry:hover .entry-grip::after {
+  opacity: 1;
+}
+
+.entry.resizing {
+  box-shadow: var(--shadow-md);
+  z-index: 14;
+  border-color: var(--accent);
+}
+
+.entry.resizing .entry-grip::after {
+  opacity: 1;
+  background: var(--accent);
+}
+
+/* The server refuses overlaps; say so before the desk lets go. */
+.entry.resizing.clash {
+  border-color: var(--warn);
+  background: var(--warn-soft);
+}
+
+.entry.resizing.clash .entry-grip::after {
+  background: var(--warn);
+}
+
+/* ---------- notes ---------- */
+
+.notes-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+.notes-dot.empty {
+  background: var(--line-strong);
+}
+
+.notes-rail {
+  position: fixed;
+  top: 54px;
+  right: 0;
+  bottom: 0;
+  width: 340px;
+  max-width: 90vw;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  animation: rail-in 170ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@keyframes rail-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+
+.notes-rail .rail-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px 13px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.notes-rail .rail-head h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.notes-rail .rail-head .when {
+  font-size: 12px;
+  color: var(--faint);
+  margin-left: auto;
+}
+
+.notes-body {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: transparent;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  resize: none;
+}
+
+.notes-body:focus {
+  outline: none;
+}
+
+.notes-read {
+  flex: 1;
+  margin: 0;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow: auto;
+}
+
+.notes-foot {
+  padding: 9px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--wash);
+  font-size: 11px;
+  color: var(--faint);
+  min-height: 33px;
+}
+
+/* ---------- clinics face ---------- */
+
+.clinic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.clinic-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.clinic-head .titles {
+  flex: 1;
+  min-width: 180px;
+}
+
+.clinic-head .times {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.clinic-head .times .select {
+  width: auto;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.clinic-title {
+  width: 100%;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 6px;
+  padding: 3px 6px;
+  margin-left: -6px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.clinic-title:hover {
+  border-color: var(--line);
+}
+
+.clinic-title:focus {
+  border-color: var(--accent);
+  background: var(--paper);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.clinic-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+  padding-left: 0;
+}
+
+.clinic-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 11px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--wash);
+  border-radius: 0 0 var(--radius) var(--radius);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.clinic-foot .select {
+  width: auto;
+  max-width: 260px;
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+/* ---------- the sign-up sheet itself ---------- */
+
+.roster {
+  display: flex;
+  flex-direction: column;
+}
+
+.roster-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 62px minmax(0, 132px) 24px;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.roster-row:last-of-type {
+  border-bottom: none;
+}
+
+.roster-row .n {
+  font-size: 11px;
+  color: var(--faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.roster-row .who {
+  font-size: 13px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-row .ntrp,
+.roster-row .tel {
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster-row .ntrp {
+  text-align: center;
+}
+
+.cell-input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 5px;
+  padding: 3px 6px;
+  font-size: 13px;
+}
+
+.cell-input.small {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cell-input.mid {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.cell-input:hover {
+  border-color: var(--line);
+}
+
+.cell-input:focus {
+  border-color: var(--accent);
+  background: var(--paper);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.cell-input::placeholder {
+  color: var(--faint);
+}
+
+.roster-drop {
+  border: none;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  padding: 2px;
+  line-height: 1;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.roster-row:hover .roster-drop,
+.roster-drop:focus-visible {
+  opacity: 1;
+}
+
+.roster-drop:hover {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.roster-add {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) 62px minmax(0, 132px) 24px;
+  gap: 8px;
+  align-items: center;
+  padding: 7px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--wash);
+}
+
+.roster-add .n {
+  font-size: 11px;
+  color: var(--faint);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.roster-add .cell-input {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+/* The dialog is 460px wide; the sheet has to fit inside it without scrolling
+   sideways, so the columns tighten and the padding goes away. */
+.roster.compact .roster-row,
+.roster.compact .roster-add {
+  grid-template-columns: 18px minmax(0, 1fr) 50px minmax(0, 108px) 22px;
+  gap: 6px;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.roster.compact .roster-add {
+  background: transparent;
+}
+
+.roster-empty {
+  padding: 14px 16px;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.roster.compact .roster-empty {
+  padding: 10px 0;
+}
+
+/* Narrow desk window: the columns compress rather than the row overflowing —
+   every flexible track is minmax(0, …) so nothing can push the card sideways. */
+@media (max-width: 720px) {
+  .roster-row,
+  .roster-add {
+    grid-template-columns: 18px minmax(0, 1fr) 44px minmax(0, 96px) 22px;
+    gap: 6px;
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+}
+
+/* ---------- print ---------- */
+
+@media print {
+  .flip-face {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+
+  .notes-rail,
+  .face-switch {
+    display: none !important;
+  }
+
+  .clinic-foot,
+  .roster-add,
+  .roster-drop {
+    display: none !important;
+  }
+}

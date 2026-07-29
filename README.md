@@ -32,9 +32,12 @@ booking platform or a member app — it is the schedule, shared.
 
 ## How it works
 
-**1. Photograph the page.** Drop a stack of photos into the importer. A vision model reads the
-grid: courts across, 30-minute slots down, coach names above the columns, continuation arrows that
-mean "this booking runs another half hour."
+**1. Photograph the page — both sides.** Drop a stack of photos into the importer. A vision model
+reads the grid: courts across, 30-minute slots down, coach names above the columns, continuation
+arrows that mean "this booking runs another half hour." It also recognises the *back* of the sheet —
+the clinic sign-up lists — and says which face it read, so the desk's only instruction is
+**photograph each day front, then back**. A clinic sheet carries no date, so it inherits the date of
+the court grid uploaded before it, and that pairing is overridable in review.
 
 **2. Verify in seconds.** The parse appears beside the photo with anything doubtful highlighted.
 Verification is deterministic, not a second model call — a court that doesn't exist at this club, a
@@ -49,6 +52,34 @@ see only their own hours, live, with a push notification when something moves.
 <div align="center">
 <img src="docs/media/pro-day.png" width="330" alt="A coach's day on their phone" />
 </div>
+
+## The whole page, not just the grid
+
+A club's schedule sheet is double-sided and covered in marks that mean something, so Courtime keeps
+all of it rather than flattening it into rows of bookings.
+
+**The other face.** One control flips between **Court grid** and **Clinics** for the same date, with
+a short page-turn — the clinic sign-up sheet as the desk knows it, every name with its NTRP rating
+and phone number.
+
+![The clinics face](docs/media/desk-clinics.png)
+
+**The roster behind a booking.** Tapping a clinic on the grid shows who is actually in it — at the
+desk and on the coach's phone, so a pro walking to court knows the four names before they get there.
+
+**Notes.** The NOTES column runs down the side of the paper — "Humbert would like Ct. 5", an account
+number — so it runs down the side of the app too, one note per day, saved as you type.
+
+![Day notes beside the grid](docs/media/desk-notes.png)
+
+**The asterisk.** A star beside a lesson on paper means *this client asked for this pro by name*.
+It's one click at the desk, it shows on the coach's phone, and it's the number a director wants at
+review time.
+
+**Drag to extend.** Dragging a booking's bottom edge lengthens it, snapping to the half hour, the
+same gesture as Google Calendar. It commits through the same mutation as everything else, so a drag
+onto an occupied slot comes back refused rather than silently overlapping. Coaches can't drag —
+their grid is read-only.
 
 ## You don't have to give up paper
 
@@ -81,6 +112,14 @@ sees their own column — enforced on the server, not by asking the model nicely
 
 ![Tempo booking a lesson](docs/media/agent-tempo.png)
 
+**You can also just talk to it.** Tapping the mic opens a live voice call over WebRTC — the API key
+never reaches the browser, only a short-lived session minted on the server. Voice and text share one
+brain: the same tools, the same permission gate, the same thread, so you can start typing and finish
+talking. There's no orb. A row of eleven hairline bars reads the actual audio — grey while you
+speak, green while Tempo does — and Tempo's clock hand swings like a metronome while it answers.
+
+![Tempo on a call](docs/media/agent-voice.png)
+
 ## Built with
 
 | | |
@@ -89,6 +128,7 @@ sees their own column — enforced on the server, not by asking the model nicely
 | **Backend** | [Convex](https://convex.dev) — reactive database, server functions, file storage, scheduler |
 | **Auth** | Convex Auth (password), roles enforced server-side on every query and mutation |
 | **Vision** | OpenAI vision models, with per-page cost telemetry |
+| **Assistant** | GPT-5.6 Luna for text, GPT Realtime over WebRTC for voice, one shared tool layer |
 | **Notifications** | Web Push (VAPID) to an installable PWA |
 
 Every surface is live because Convex queries are subscriptions — there is no polling code anywhere
@@ -107,9 +147,14 @@ Set these on the Convex deployment (`npx convex env set NAME value`):
 
 | Variable | Purpose |
 |---|---|
-| `OPENAI_API_KEY` | vision model access for photo import |
+| `OPENAI_API_KEY` | photo import, and both halves of Tempo |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | web push |
 | `OPENAI_VISION_REASONING_EFFORT` | `low` by default |
+| `OPENAI_AGENT_MODEL` | Tempo's text model — `gpt-5.6-luna` by default |
+| `OPENAI_REALTIME_MODEL` / `OPENAI_REALTIME_VOICE` | Tempo's voice — `gpt-realtime-2` / `cedar` by default |
+
+Without `OPENAI_API_KEY` the mic simply doesn't render, so a deployment that can't do voice doesn't
+offer it.
 
 and `VITE_VAPID_PUBLIC_KEY` in `.env.local` for the browser half of push. See
 [`.env.example`](.env.example).
@@ -120,10 +165,11 @@ entry as the front desk or as a coach.
 ## Repo map
 
 ```
-src/desk/     the front-desk app — grid, entry editing, command palette, importer, insights
-src/pro/      the coach's PWA — my day, my week, the club, push notifications
+src/desk/     the front-desk app — grid, clinics face, rosters, notes, importer, insights
+src/pro/      the coach's PWA — my day, my week, the club, rosters, push notifications
+src/agent/    Tempo — the dock, the character, the voice session and its visualiser
 src/screens/  sign-in and the club onboarding wizard
-convex/       schema, auth, scheduling, the import pipeline, push fan-out
+convex/       schema, auth, scheduling, clinics and notes, the import pipeline, push fan-out
 landing/      the marketing site (static, no build step)
 docs/SPEC.md  the canonical product and build spec
 ```

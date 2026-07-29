@@ -205,6 +205,7 @@ export const createEntry = mutation({
     proMembershipId: v.optional(v.id("memberships")),
     sessionType: v.optional(v.string()),
     notes: v.optional(v.string()),
+    requested: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const membership = await requireMembership(ctx, "staff");
@@ -242,6 +243,7 @@ export const createEntry = mutation({
       proMembershipId: args.proMembershipId,
       sessionType: args.sessionType,
       notes: args.notes,
+      requested: args.requested,
       source: "manual",
       updatedAt: Date.now(),
     });
@@ -269,6 +271,7 @@ export const updateEntry = mutation({
     proMembershipId: v.optional(v.union(v.id("memberships"), v.null())),
     sessionType: v.optional(v.string()),
     notes: v.optional(v.string()),
+    requested: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const membership = await requireMembership(ctx, "staff");
@@ -315,6 +318,7 @@ export const updateEntry = mutation({
       proMembershipId: nextPro,
       ...(args.sessionType !== undefined ? { sessionType: args.sessionType } : {}),
       ...(args.notes !== undefined ? { notes: args.notes } : {}),
+      ...(args.requested !== undefined ? { requested: args.requested } : {}),
       updatedAt: Date.now(),
     });
 
@@ -335,6 +339,24 @@ export const updateEntry = mutation({
       affectedMembershipIds: [...affected],
     });
 
+    return null;
+  },
+});
+
+/**
+ * The asterisk. One click, no dialog — the desk marks these while a member is
+ * still on the phone, so it has to be as cheap as ticking a box on paper.
+ */
+export const setRequested = mutation({
+  args: { entryId: v.id("entries"), requested: v.boolean() },
+  handler: async (ctx, args) => {
+    const membership = await requireMembership(ctx, "staff");
+    const entry = await ctx.db.get("entries", args.entryId);
+    if (!entry || entry.orgId !== membership.orgId) throw new Error("Unknown booking");
+    await ctx.db.patch("entries", args.entryId, {
+      requested: args.requested,
+      updatedAt: Date.now(),
+    });
     return null;
   },
 });

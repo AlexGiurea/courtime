@@ -52,6 +52,14 @@ const GROUP_SESSIONS = [
   { label: "Elites squad", type: "Group" },
 ];
 
+function formatClock(min: number): string {
+  const h24 = Math.floor(min / 60);
+  const m = min % 60;
+  const suffix = h24 >= 12 ? "PM" : "AM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return m === 0 ? `${h12} ${suffix}` : `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
+
 /** Deterministic PRNG so a reseed reproduces the same demo week. */
 function makeRng(seed: string) {
   let h = 2166136261;
@@ -79,6 +87,15 @@ function weekdayOf(iso: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
 }
 
+const RATINGS = ["3.0", "3.5", "3.5", "4.0", "4.0", "4.5"];
+
+const DAY_NOTES = [
+  "Humbert would like Ct. 5 whenever it's open.",
+  "JPMC account 1000456 — bill the Tuesday clinics here.",
+  "Stadium resurfaced Thursday, no play after 2.",
+  "Ball machine on Court 4 all morning.",
+];
+
 type SeedEntry = {
   courtIndex: number;
   startMin: number;
@@ -86,6 +103,7 @@ type SeedEntry = {
   label: string;
   sessionType: string;
   proIndex: number | null;
+  requested: boolean;
 };
 
 /**
@@ -132,6 +150,7 @@ function buildDay(iso: string, proCount: number): SeedEntry[] {
           label: session.label,
           sessionType: session.type,
           proIndex,
+          requested: false,
         });
         cursor += duration + (rng() > 0.6 ? 30 : 0);
       } else {
@@ -144,6 +163,8 @@ function buildDay(iso: string, proCount: number): SeedEntry[] {
           label: `Private — ${member}`,
           sessionType: "Private",
           proIndex,
+          // Roughly a third of privates are booked with a named pro.
+          requested: rng() > 0.66,
         });
         cursor += duration;
       }
@@ -164,6 +185,7 @@ function buildDay(iso: string, proCount: number): SeedEntry[] {
           label: a === b ? `${a} — court hold` : `${a} vs ${b}`,
           sessionType: "Member play",
           proIndex: null,
+          requested: false,
         });
         cursor += 60;
       }
@@ -253,6 +275,66 @@ export const ensureDemo = mutation({
   },
 });
 
+/**
+ * Wipe and regenerate the demo club's schedule. Only ever touches the org
+ * flagged `isDemo`, which exists to be thrown away — a real club's data is
+ * unreachable from here.
+ */
+export const resetDemo = mutation({
+  args: { todayIso: v.string() },
+  handler: async (ctx, args) => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(args.todayIso)) throw new Error("Invalid date");
+    const org = await ctx.db
+      .query("orgs")
+      .withIndex("by_slug", (q) => q.eq("slug", DEMO_SLUG))
+      .first();
+    if (!org || !org.isDemo) throw new Error("No demo club to reset");
+
+    await ctx.scheduler.runAfter(0, internal.seed.clearDemoData, {
+      orgId: org._id,
+      todayIso: args.todayIso,
+    });
+    return { orgId: org._id };
+  },
+});
+
+/** Deletes in bounded batches so one transaction can't blow its limits. */
+export const clearDemoData = internalMutation({
+  args: { orgId: v.id("orgs"), todayIso: v.string() },
+  handler: async (ctx, args) => {
+    const entries = await ctx.db
+      .query("entries")
+      .withIndex("by_org_and_date", (q) => q.eq("orgId", args.orgId))
+      .take(400);
+    for (const entry of entries) await ctx.db.delete("entries", entry._id);
+
+    const rosters = await ctx.db
+      .query("clinicRosters")
+      .withIndex("by_org_and_date", (q) => q.eq("orgId", args.orgId))
+      .take(400);
+    for (const roster of rosters) await ctx.db.delete("clinicRosters", roster._id);
+
+    const notes = await ctx.db
+      .query("dayNotes")
+      .withIndex("by_org_and_date", (q) => q.eq("orgId", args.orgId))
+      .take(200);
+    for (const note of notes) await ctx.db.delete("dayNotes", note._id);
+
+    if (entries.length || rosters.length || notes.length) {
+      await ctx.scheduler.runAfter(0, internal.seed.clearDemoData, args);
+      return null;
+    }
+
+    await ctx.scheduler.runAfter(0, internal.seed.seedDays, {
+      orgId: args.orgId,
+      startIso: addDays(args.todayIso, -3),
+      dayCount: 24,
+      offset: 0,
+    });
+    return null;
+  },
+});
+
 export const seedDays = internalMutation({
   args: {
     orgId: v.id("orgs"),
@@ -286,10 +368,12 @@ export const seedDays = internalMutation({
         .first();
       if (already) continue;
 
+      const rng = makeRng(`${iso}-rosters`);
+
       for (const seedEntry of buildDay(iso, pros.length)) {
         const court = courts[seedEntry.courtIndex];
         if (!court) continue;
-        await ctx.db.insert("entries", {
+        const entryId = await ctx.db.insert("entries", {
           orgId: args.orgId,
           courtId: court._id,
           date: iso,
@@ -297,9 +381,53 @@ export const seedDays = internalMutation({
           endMin: seedEntry.endMin,
           label: seedEntry.label,
           sessionType: seedEntry.sessionType,
+          requested: seedEntry.requested || undefined,
           proMembershipId:
             seedEntry.proIndex === null ? undefined : pros[seedEntry.proIndex]._id,
           source: "manual",
+          updatedAt: Date.now(),
+        });
+
+        // The back of the paper: a sign-up sheet behind every group session.
+        if (seedEntry.sessionType === "Clinic" || seedEntry.sessionType === "Group") {
+          const size = 2 + Math.floor(rng() * 6);
+          const participants: {
+            name: string;
+            phone: string | null;
+            rating: string | null;
+            note: string | null;
+          }[] = [];
+          const used = new Set<string>();
+          for (let i = 0; i < size; i++) {
+            const name = MEMBER_NAMES[Math.floor(rng() * MEMBER_NAMES.length)];
+            if (used.has(name)) continue;
+            used.add(name);
+            participants.push({
+              name,
+              phone: `${Math.floor(rng() * 800) + 200}-${Math.floor(rng() * 800) + 200}-${String(Math.floor(rng() * 10000)).padStart(4, "0")}`,
+              rating: RATINGS[Math.floor(rng() * RATINGS.length)],
+              note: null,
+            });
+          }
+          await ctx.db.insert("clinicRosters", {
+            orgId: args.orgId,
+            date: iso,
+            title: `${seedEntry.label} — ${formatClock(seedEntry.startMin)}`,
+            startMin: seedEntry.startMin,
+            endMin: seedEntry.endMin,
+            entryId,
+            participants,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+
+      // Not every day has something written in the notes column.
+      if (rng() > 0.55) {
+        await ctx.db.insert("dayNotes", {
+          orgId: args.orgId,
+          date: iso,
+          body: DAY_NOTES[Math.floor(rng() * DAY_NOTES.length)],
           updatedAt: Date.now(),
         });
       }

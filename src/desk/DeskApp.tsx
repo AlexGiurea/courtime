@@ -15,10 +15,14 @@ import {
 import DayGrid, { GridEntry } from "./DayGrid";
 import EntryDialog, { EntryDraft } from "./EntryDialog";
 import CommandPalette from "./CommandPalette";
+import ClinicsFace from "./ClinicsFace";
+import { NotesButton, NotesRail } from "./DayNotes";
+import { usePageTurn } from "./PageTurn";
 import ImportPage from "./ImportPage";
 import ReviewPage from "./ReviewPage";
 import SettingsPage from "./SettingsPage";
 import InsightsPage from "./InsightsPage";
+import "./desk.css";
 
 export default function DeskApp({ session }: { session: SessionWithClub }) {
   const [date, setDate] = useState(todayIso());
@@ -120,6 +124,8 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
   );
 }
 
+type Face = "grid" | "clinics";
+
 function SchedulePage({
   session,
   date,
@@ -133,9 +139,18 @@ function SchedulePage({
   onCreate: (courtId: Id<"courts">, startMin: number, seedText?: string) => void;
   onOpen: (entry: GridEntry) => void;
 }) {
+  // Both faces and the notes column subscribe from here, so turning the page
+  // never re-fetches and the day bar can tell you what is on the other side.
   const day = useQuery(api.schedule.day, { date });
+  const clinics = useQuery(api.clinics.forDate, { date });
+  const note = useQuery(api.notes.forDate, { date });
+
   const today = todayIso();
   const relative = relativeDayLabel(date, today);
+  const canEdit = session.membership.role !== "pro";
+
+  const { shown, face, turnTo, faceProps } = usePageTurn<Face>("grid");
+  const [notesOpen, setNotesOpen] = useState(false);
 
   const stats = useMemo(() => {
     const entries = day?.entries ?? [];
@@ -149,6 +164,14 @@ function SchedulePage({
       courts: courts.size,
     };
   }, [day]);
+
+  const clinicStats = useMemo(() => {
+    const rosters = clinics?.rosters ?? [];
+    return {
+      sheets: rosters.length,
+      signedUp: rosters.reduce((sum, roster) => sum + roster.participants.length, 0),
+    };
+  }, [clinics]);
 
   return (
     <div className="page">
@@ -176,6 +199,16 @@ function SchedulePage({
           </button>
         ) : null}
 
+        {/* Two sides of the same sheet, not two places to be. */}
+        <div className="face-switch" role="group" aria-label="Side of the page">
+          <button aria-pressed={face === "grid"} onClick={() => turnTo("grid", -1)}>
+            Court grid
+          </button>
+          <button aria-pressed={face === "clinics"} onClick={() => turnTo("clinics", 1)}>
+            Clinics
+          </button>
+        </div>
+
         <span style={{ flex: 1 }} />
 
         <span className="live" title="Every change appears here the moment it is made">
@@ -183,30 +216,54 @@ function SchedulePage({
           Live
         </span>
         <span className="tag">
-          {stats.total} booking{stats.total === 1 ? "" : "s"} · {stats.hours} coached ·{" "}
-          {stats.courts} court{stats.courts === 1 ? "" : "s"}
+          {face === "clinics"
+            ? `${clinicStats.sheets} clinic${clinicStats.sheets === 1 ? "" : "s"} · ${clinicStats.signedUp} signed up`
+            : `${stats.total} booking${stats.total === 1 ? "" : "s"} · ${stats.hours} coached · ${stats.courts} court${stats.courts === 1 ? "" : "s"}`}
         </span>
+        <NotesButton
+          note={note}
+          open={notesOpen}
+          onToggle={() => setNotesOpen((open) => !open)}
+        />
         <button className="btn" onClick={() => window.print()}>
           Print day sheet
         </button>
       </div>
 
-      {day === undefined ? (
-        <Loading label="Loading the day" />
-      ) : (
-        <DayGrid
-          session={session}
-          entries={day?.entries ?? []}
-          onCreate={onCreate}
-          onOpen={onOpen}
-        />
-      )}
+      <div className="flip-stage">
+        <div {...faceProps}>
+          {shown === "clinics" ? (
+            <ClinicsFace
+              session={session}
+              date={date}
+              data={clinics}
+              entries={day?.entries ?? []}
+              canEdit={canEdit}
+            />
+          ) : day === undefined ? (
+            <Loading label="Loading the day" />
+          ) : (
+            <DayGrid
+              session={session}
+              entries={day?.entries ?? []}
+              onCreate={onCreate}
+              onOpen={onOpen}
+            />
+          )}
+        </div>
+      </div>
 
       <p className="muted no-print" style={{ fontSize: 12, marginTop: 12 }}>
-        Click any empty slot to book it. <kbd>←</kbd> <kbd>→</kbd> move a day,{" "}
-        <kbd>Shift</kbd> a week, <kbd>T</kbd> jumps to today, <kbd>Ctrl</kbd>{" "}
-        <kbd>K</kbd> jumps to any date.
+        {shown === "clinics"
+          ? "The back of the page: who signed up for each clinic. "
+          : "Click any empty slot to book it. Drag a booking's bottom edge to lengthen it. "}
+        <kbd>←</kbd> <kbd>→</kbd> move a day, <kbd>Shift</kbd> a week, <kbd>T</kbd>{" "}
+        jumps to today, <kbd>Ctrl</kbd> <kbd>K</kbd> jumps to any date.
       </p>
+
+      {notesOpen ? (
+        <NotesRail date={date} note={note} onClose={() => setNotesOpen(false)} />
+      ) : null}
     </div>
   );
 }

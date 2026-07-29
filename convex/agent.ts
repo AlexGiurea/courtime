@@ -1,8 +1,9 @@
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
-import { Id } from "./_generated/dataModel";
+import { Doc, Id } from "./_generated/dataModel";
 import {
+  ActionCtx,
   action,
   internalMutation,
   internalQuery,
@@ -303,22 +304,43 @@ export const availability = query({
   args: {},
   handler: async (ctx) => {
     const membership = await currentMembership(ctx);
-    if (!membership) return { signedIn: false, pro: false, canWrite: false };
+    if (!membership) {
+      return {
+        signedIn: false,
+        pro: false,
+        canWrite: false,
+        firstName: "",
+        voice: false,
+      };
+    }
     const org = await ctx.db.get("orgs", membership.orgId);
     return {
       signedIn: true,
       pro: org?.plan === "pro",
       canWrite: membership.role !== "pro",
       firstName: membership.displayName.split(/\s+/)[0] ?? "",
+      // Voice needs the same key the text agent uses; deployments without it
+      // simply don't offer the mic rather than failing on the first tap.
+      voice: Boolean(process.env.OPENAI_API_KEY),
     };
   },
 });
 
 // ---------------------------------------------------------------------------
-// The assistant itself.
+// Tools. One definition list, one executor — the text loop and the realtime
+// voice session both go through them, so behaviour can't drift between the two.
 // ---------------------------------------------------------------------------
 
-const READ_TOOLS = [
+export type AgentTool = {
+  type: "function";
+  function: {
+    name: string;
+    description: string;
+    parameters: Record<string, unknown>;
+  };
+};
+
+export const READ_TOOLS: AgentTool[] = [
   {
     type: "function",
     function: {
@@ -376,7 +398,7 @@ const READ_TOOLS = [
   },
 ];
 
-const WRITE_TOOLS = [
+export const WRITE_TOOLS: AgentTool[] = [
   {
     type: "function",
     function: {
@@ -436,6 +458,306 @@ const WRITE_TOOLS = [
   },
 ];
 
+/** The tools a caller is allowed to see at all. A coach never gets the writes. */
+export function toolsFor(canWrite: boolean): AgentTool[] {
+  return canWrite ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
+}
+
+export type ClubContext = {
+  membership: Doc<"memberships">;
+  org: Doc<"orgs">;
+  courts: { id: string; name: string }[];
+  members: { id: string; name: string }[];
+};
+
+/**
+ * Everything a tool call needs, all of it derived server-side from the session.
+ * Nothing in here is ever taken from the client — the browser only says which
+ * tool to run and with what arguments.
+ */
+export type ToolSession = {
+  userId: Id<"users">;
+  club: ClubContext;
+  canWrite: boolean;
+  todayIso: string;
+};
+
+export type SessionResult =
+  | { ok: true; session: ToolSession }
+  | { ok: false; error: string };
+
+/**
+ * Identity, club and role for the caller. Both entry points (the text `chat`
+ * loop and the voice session) start here, so the Pro gate and the role rules
+ * are stated exactly once.
+ */
+export async function loadSession(
+  ctx: ActionCtx,
+  todayIso: string,
+): Promise<SessionResult> {
+  const userId = await getAuthUserId(ctx);
+  if (!userId) return { ok: false, error: "You're signed out." };
+
+  const club = await ctx.runQuery(internal.agent.context, { userId });
+  if (!club) return { ok: false, error: "You're not part of a club yet." };
+  if (club.org.plan !== "pro") {
+    return { ok: false, error: "The assistant is part of the Pro plan." };
+  }
+
+  return {
+    ok: true,
+    session: {
+      userId,
+      club,
+      canWrite: club.membership.role !== "pro",
+      todayIso,
+    },
+  };
+}
+
+function courtByName(club: ClubContext, name: unknown) {
+  if (typeof name !== "string") return undefined;
+  const norm = normalize(name);
+  return (
+    club.courts.find((c) => normalize(c.name) === norm) ??
+    club.courts.find((c) => normalize(c.name) === `court${norm}`) ??
+    club.courts.find((c) => normalize(c.name).includes(norm) && norm.length > 1)
+  );
+}
+
+function coachByName(club: ClubContext, name: unknown) {
+  if (typeof name !== "string" || !name.trim()) return undefined;
+  const norm = normalize(name);
+  return (
+    club.members.find((m) => normalize(m.name) === norm) ??
+    club.members.find((m) => normalize(m.name.split(/\s+/)[0]) === norm) ??
+    club.members.find((m) => normalize(m.name).startsWith(norm) && norm.length >= 3)
+  );
+}
+
+export type ToolOutcome = { result: unknown; changed: boolean };
+
+/**
+ * The single implementation of "run tool X with args Y". The text loop feeds it
+ * parsed tool_call arguments; the voice client feeds it the realtime model's
+ * function-call arguments through `invokeTool`. There is deliberately no second
+ * copy of this dispatch anywhere.
+ */
+export async function executeTool(
+  ctx: ActionCtx,
+  session: ToolSession,
+  name: string,
+  parsed: Record<string, unknown>,
+): Promise<ToolOutcome> {
+  const { club, userId, canWrite, todayIso } = session;
+  const orgId = club.org._id;
+
+  if (name === "list_bookings") {
+    const rows = await ctx.runQuery(internal.agent.bookingsOn, {
+      orgId,
+      startDate: String(parsed.startDate ?? todayIso),
+      endDate: String(parsed.endDate ?? parsed.startDate ?? todayIso),
+    });
+    const coach = coachByName(club, parsed.coachName);
+    const filtered = parsed.coachName
+      ? rows.filter((r) => r.coachId === coach?.id)
+      : rows;
+    // A coach only ever sees their own column through the assistant.
+    const scoped = canWrite
+      ? filtered
+      : filtered.filter((r) => r.coachId === (club.membership._id as string));
+    return { result: { bookings: scoped.slice(0, 120) }, changed: false };
+  }
+
+  if (name === "find_open_slots") {
+    const date = String(parsed.date ?? todayIso);
+    const duration = Math.max(SLOT, Number(parsed.durationMin) || 60);
+    const rows = await ctx.runQuery(internal.agent.bookingsOn, {
+      orgId,
+      startDate: date,
+      endDate: date,
+    });
+    const only = courtByName(club, parsed.courtName);
+    const courts = only ? [only] : club.courts;
+    const open: { court: string; from: string; to: string }[] = [];
+
+    for (const court of courts) {
+      const taken = rows
+        .filter((r) => r.court === court.name)
+        .sort((a, b) => a.startMin - b.startMin);
+      let cursor = club.org.dayStartMin;
+      for (const booking of [
+        ...taken,
+        { startMin: club.org.dayEndMin, endMin: club.org.dayEndMin },
+      ]) {
+        if (booking.startMin - cursor >= duration) {
+          open.push({
+            court: court.name,
+            from: formatTime(cursor),
+            to: formatTime(booking.startMin),
+          });
+        }
+        cursor = Math.max(cursor, booking.endMin);
+      }
+    }
+    return { result: { date, openWindows: open.slice(0, 40) }, changed: false };
+  }
+
+  if (name === "coach_hours") {
+    const rows = await ctx.runQuery(internal.agent.bookingsOn, {
+      orgId,
+      startDate: String(parsed.startDate ?? todayIso),
+      endDate: String(parsed.endDate ?? todayIso),
+    });
+    const tally = new Map<string, { sessions: number; minutes: number }>();
+    for (const row of rows) {
+      if (!row.coach) continue;
+      const current = tally.get(row.coach) ?? { sessions: 0, minutes: 0 };
+      tally.set(row.coach, {
+        sessions: current.sessions + 1,
+        minutes: current.minutes + (row.endMin - row.startMin),
+      });
+    }
+    return {
+      result: {
+        coaches: [...tally.entries()].map(([coach, value]) => ({
+          coach,
+          sessions: value.sessions,
+          hours: Number((value.minutes / 60).toFixed(1)),
+        })),
+      },
+      changed: false,
+    };
+  }
+
+  if (!canWrite) {
+    return {
+      result: { error: "Only the front desk can change the schedule." },
+      changed: false,
+    };
+  }
+
+  if (name === "create_booking") {
+    const court = courtByName(club, parsed.courtName);
+    if (!court) {
+      return {
+        result: { error: `There is no court called "${parsed.courtName}".` },
+        changed: false,
+      };
+    }
+    const startMin = minutesFrom(parsed.startTime);
+    const endMin = minutesFrom(parsed.endTime);
+    if (startMin === null || endMin === null) {
+      return { result: { error: "Times must look like 14:30." }, changed: false };
+    }
+    const coach = coachByName(club, parsed.coachName);
+    const result = await ctx.runMutation(internal.agent.applyCreate, {
+      orgId,
+      userId,
+      date: String(parsed.date ?? todayIso),
+      courtId: court.id as Id<"courts">,
+      startMin,
+      endMin,
+      label: String(parsed.label ?? "Booking"),
+      proMembershipId: coach ? (coach.id as Id<"memberships">) : undefined,
+    });
+    return { result, changed: result.ok };
+  }
+
+  if (name === "move_booking") {
+    const bookingId = String(parsed.bookingId ?? "");
+    if (!bookingId) {
+      return {
+        result: { error: "Which booking? Call list_bookings first." },
+        changed: false,
+      };
+    }
+    const court = courtByName(club, parsed.courtName);
+    const startMin = minutesFrom(parsed.startTime);
+    const endMin = minutesFrom(parsed.endTime);
+    const coachRaw = typeof parsed.coachName === "string" ? parsed.coachName : undefined;
+    const clearCoach = coachRaw && /^(none|no coach|nobody)$/i.test(coachRaw.trim());
+    const coach = clearCoach ? undefined : coachByName(club, coachRaw);
+
+    const result = await ctx.runMutation(internal.agent.applyUpdate, {
+      orgId,
+      userId,
+      entryId: bookingId as Id<"entries">,
+      ...(court ? { courtId: court.id as Id<"courts"> } : {}),
+      ...(startMin !== null ? { startMin } : {}),
+      ...(endMin !== null ? { endMin } : {}),
+      ...(typeof parsed.label === "string" && parsed.label
+        ? { label: parsed.label }
+        : {}),
+      ...(clearCoach
+        ? { proMembershipId: null }
+        : coach
+          ? { proMembershipId: coach.id as Id<"memberships"> }
+          : {}),
+    });
+    return { result, changed: result.ok };
+  }
+
+  if (name === "cancel_booking") {
+    const bookingId = String(parsed.bookingId ?? "");
+    if (!bookingId) {
+      return {
+        result: { error: "Which booking? Call list_bookings first." },
+        changed: false,
+      };
+    }
+    const result = await ctx.runMutation(internal.agent.applyDelete, {
+      orgId,
+      userId,
+      entryId: bookingId as Id<"entries">,
+    });
+    return { result, changed: result.ok };
+  }
+
+  return { result: { error: `Unknown tool ${name}` }, changed: false };
+}
+
+/** Parse-then-dispatch, so both entry points fail the same way on bad JSON. */
+export async function runToolCall(
+  ctx: ActionCtx,
+  session: ToolSession,
+  name: string,
+  rawArgs: string,
+): Promise<ToolOutcome> {
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = JSON.parse(rawArgs || "{}");
+  } catch {
+    return {
+      result: { error: "Could not read the tool arguments." },
+      changed: false,
+    };
+  }
+  return executeTool(ctx, session, name, parsed);
+}
+
+/** Shared preamble: the same club facts whether Tempo is read or spoken. */
+export function clubBriefing(session: ToolSession): string[] {
+  const { club, todayIso, canWrite } = session;
+  return [
+    `You are Tempo, the scheduling assistant inside Courtime, used by ${club.org.name}.`,
+    `Today is ${todayIso}. Resolve relative dates like "tomorrow" or "next Tuesday" against it.`,
+    `Courts: ${club.courts.map((c) => c.name).join(", ")}.`,
+    `Coaches: ${club.members.map((m) => m.name).join(", ") || "none on file"}.`,
+    `The club's day runs ${formatTime(club.org.dayStartMin)} to ${formatTime(club.org.dayEndMin)} and everything sits on a 30-minute grid.`,
+    `You are talking to ${club.membership.displayName}, whose role is ${club.membership.role}.`,
+    canWrite
+      ? "You may change the schedule. Make the change, then say plainly what you did."
+      : "You can only read the schedule. If asked to change something, say the front desk has to make that change.",
+    "Always call list_bookings to get a bookingId before moving or cancelling anything. Never invent a bookingId.",
+    "If a request is ambiguous about which booking is meant, ask one short clarifying question instead of guessing.",
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// The assistant itself.
+// ---------------------------------------------------------------------------
+
 export const chat = action({
   args: {
     messages: v.array(
@@ -450,21 +772,9 @@ export const chat = action({
     ctx,
     args,
   ): Promise<{ reply: string; changed: boolean; error?: string }> => {
-    const authedUserId = await getAuthUserId(ctx);
-    if (!authedUserId) throw new Error("Not authenticated");
-    const userId: Id<"users"> = authedUserId;
-
-    const context = await ctx.runQuery(internal.agent.context, { userId });
-    if (!context) {
-      return { reply: "", changed: false, error: "You're not part of a club yet." };
-    }
-    if (context.org.plan !== "pro") {
-      return {
-        reply: "",
-        changed: false,
-        error: "The assistant is part of the Pro plan.",
-      };
-    }
+    const loaded = await loadSession(ctx, args.todayIso);
+    if (!loaded.ok) return { reply: "", changed: false, error: loaded.error };
+    const session = loaded.session;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -475,22 +785,10 @@ export const chat = action({
       };
     }
 
-    const canWrite = context.membership.role !== "pro";
-    const tools = canWrite ? [...READ_TOOLS, ...WRITE_TOOLS] : READ_TOOLS;
-
+    const tools = toolsFor(session.canWrite);
     const system = [
-      `You are the scheduling assistant inside Courtime, used by ${context.org.name}.`,
-      `Today is ${args.todayIso}. Resolve relative dates like "tomorrow" or "next Tuesday" against it.`,
-      `Courts: ${context.courts.map((c) => c.name).join(", ")}.`,
-      `Coaches: ${context.members.map((m) => m.name).join(", ") || "none on file"}.`,
-      `The club's day runs ${formatTime(context.org.dayStartMin)} to ${formatTime(context.org.dayEndMin)} and everything sits on a 30-minute grid.`,
-      `You are talking to ${context.membership.displayName}, whose role is ${context.membership.role}.`,
-      canWrite
-        ? "You may change the schedule. Make the change, then say plainly what you did."
-        : "You can only read the schedule. If asked to change something, say the front desk has to make that change.",
+      ...clubBriefing(session),
       "Be brief and concrete — one or two sentences, no preamble, no bullet lists unless you are listing bookings.",
-      "Always call list_bookings to get a bookingId before moving or cancelling anything. Never invent a bookingId.",
-      "If a request is ambiguous about which booking is meant, ask one short clarifying question instead of guessing.",
     ].join("\n");
 
     type ChatMessage = {
@@ -509,181 +807,7 @@ export const chat = action({
       ...args.messages.slice(-12).map((m) => ({ role: m.role, content: m.content })),
     ];
 
-    const courtByName = (name: unknown) => {
-      if (typeof name !== "string") return undefined;
-      const norm = normalize(name);
-      return (
-        context.courts.find((c) => normalize(c.name) === norm) ??
-        context.courts.find((c) => normalize(c.name) === `court${norm}`) ??
-        context.courts.find((c) => normalize(c.name).includes(norm) && norm.length > 1)
-      );
-    };
-
-    const coachByName = (name: unknown) => {
-      if (typeof name !== "string" || !name.trim()) return undefined;
-      const norm = normalize(name);
-      return (
-        context.members.find((m) => normalize(m.name) === norm) ??
-        context.members.find((m) => normalize(m.name.split(/\s+/)[0]) === norm) ??
-        context.members.find((m) => normalize(m.name).startsWith(norm) && norm.length >= 3)
-      );
-    };
-
     let changed = false;
-
-    async function runTool(name: string, rawArgs: string): Promise<unknown> {
-      let parsed: Record<string, unknown> = {};
-      try {
-        parsed = JSON.parse(rawArgs || "{}");
-      } catch {
-        return { error: "Could not read the tool arguments." };
-      }
-
-      if (name === "list_bookings") {
-        const rows = await ctx.runQuery(internal.agent.bookingsOn, {
-          orgId: context!.org._id,
-          startDate: String(parsed.startDate ?? args.todayIso),
-          endDate: String(parsed.endDate ?? parsed.startDate ?? args.todayIso),
-        });
-        const coach = coachByName(parsed.coachName);
-        const filtered = parsed.coachName
-          ? rows.filter((r) => r.coachId === coach?.id)
-          : rows;
-        // A coach only ever sees their own column through the assistant.
-        const scoped = canWrite
-          ? filtered
-          : filtered.filter((r) => r.coachId === (context!.membership._id as string));
-        return { bookings: scoped.slice(0, 120) };
-      }
-
-      if (name === "find_open_slots") {
-        const date = String(parsed.date ?? args.todayIso);
-        const duration = Math.max(SLOT, Number(parsed.durationMin) || 60);
-        const rows = await ctx.runQuery(internal.agent.bookingsOn, {
-          orgId: context!.org._id,
-          startDate: date,
-          endDate: date,
-        });
-        const only = courtByName(parsed.courtName);
-        const courts = only ? [only] : context!.courts;
-        const open: { court: string; from: string; to: string }[] = [];
-
-        for (const court of courts) {
-          const taken = rows
-            .filter((r) => r.court === court.name)
-            .sort((a, b) => a.startMin - b.startMin);
-          let cursor = context!.org.dayStartMin;
-          for (const booking of [
-            ...taken,
-            { startMin: context!.org.dayEndMin, endMin: context!.org.dayEndMin },
-          ]) {
-            if (booking.startMin - cursor >= duration) {
-              open.push({
-                court: court.name,
-                from: formatTime(cursor),
-                to: formatTime(booking.startMin),
-              });
-            }
-            cursor = Math.max(cursor, booking.endMin);
-          }
-        }
-        return { date, openWindows: open.slice(0, 40) };
-      }
-
-      if (name === "coach_hours") {
-        const rows = await ctx.runQuery(internal.agent.bookingsOn, {
-          orgId: context!.org._id,
-          startDate: String(parsed.startDate ?? args.todayIso),
-          endDate: String(parsed.endDate ?? args.todayIso),
-        });
-        const tally = new Map<string, { sessions: number; minutes: number }>();
-        for (const row of rows) {
-          if (!row.coach) continue;
-          const current = tally.get(row.coach) ?? { sessions: 0, minutes: 0 };
-          tally.set(row.coach, {
-            sessions: current.sessions + 1,
-            minutes: current.minutes + (row.endMin - row.startMin),
-          });
-        }
-        return {
-          coaches: [...tally.entries()].map(([coach, value]) => ({
-            coach,
-            sessions: value.sessions,
-            hours: Number((value.minutes / 60).toFixed(1)),
-          })),
-        };
-      }
-
-      if (!canWrite) return { error: "Only the front desk can change the schedule." };
-
-      if (name === "create_booking") {
-        const court = courtByName(parsed.courtName);
-        if (!court) return { error: `There is no court called "${parsed.courtName}".` };
-        const startMin = minutesFrom(parsed.startTime);
-        const endMin = minutesFrom(parsed.endTime);
-        if (startMin === null || endMin === null) {
-          return { error: "Times must look like 14:30." };
-        }
-        const coach = coachByName(parsed.coachName);
-        const result = await ctx.runMutation(internal.agent.applyCreate, {
-          orgId: context!.org._id,
-          userId,
-          date: String(parsed.date ?? args.todayIso),
-          courtId: court.id as Id<"courts">,
-          startMin,
-          endMin,
-          label: String(parsed.label ?? "Booking"),
-          proMembershipId: coach ? (coach.id as Id<"memberships">) : undefined,
-        });
-        if (result.ok) changed = true;
-        return result;
-      }
-
-      if (name === "move_booking") {
-        const bookingId = String(parsed.bookingId ?? "");
-        if (!bookingId) return { error: "Which booking? Call list_bookings first." };
-        const court = courtByName(parsed.courtName);
-        const startMin = minutesFrom(parsed.startTime);
-        const endMin = minutesFrom(parsed.endTime);
-        const coachRaw = typeof parsed.coachName === "string" ? parsed.coachName : undefined;
-        const clearCoach = coachRaw && /^(none|no coach|nobody)$/i.test(coachRaw.trim());
-        const coach = clearCoach ? undefined : coachByName(coachRaw);
-
-        const result = await ctx.runMutation(internal.agent.applyUpdate, {
-          orgId: context!.org._id,
-          userId,
-          entryId: bookingId as Id<"entries">,
-          ...(court ? { courtId: court.id as Id<"courts"> } : {}),
-          ...(startMin !== null ? { startMin } : {}),
-          ...(endMin !== null ? { endMin } : {}),
-          ...(typeof parsed.label === "string" && parsed.label
-            ? { label: parsed.label }
-            : {}),
-          ...(clearCoach
-            ? { proMembershipId: null }
-            : coach
-              ? { proMembershipId: coach.id as Id<"memberships"> }
-              : {}),
-        });
-        if (result.ok) changed = true;
-        return result;
-      }
-
-      if (name === "cancel_booking") {
-        const bookingId = String(parsed.bookingId ?? "");
-        if (!bookingId) return { error: "Which booking? Call list_bookings first." };
-        const result = await ctx.runMutation(internal.agent.applyDelete, {
-          orgId: context!.org._id,
-          userId,
-          entryId: bookingId as Id<"entries">,
-        });
-        if (result.ok) changed = true;
-        return result;
-      }
-
-      return { error: `Unknown tool ${name}` };
-    }
-
     const model = process.env.OPENAI_AGENT_MODEL || "gpt-5.6-luna";
 
     // Tool loop. Bounded so a confused model can't spend the club's money.
@@ -734,11 +858,17 @@ export const chat = action({
       }
 
       for (const call of toolCalls) {
-        const result = await runTool(call.function.name, call.function.arguments);
+        const outcome = await runToolCall(
+          ctx,
+          session,
+          call.function.name,
+          call.function.arguments,
+        );
+        changed = changed || outcome.changed;
         messages.push({
           role: "tool",
           tool_call_id: call.id,
-          content: JSON.stringify(result),
+          content: JSON.stringify(outcome.result),
         });
       }
     }
@@ -747,6 +877,47 @@ export const chat = action({
       reply: "",
       changed,
       error: "That took more steps than expected — try asking for one thing at a time.",
+    };
+  },
+});
+
+/**
+ * The voice path's way into the tools. The realtime model runs in the browser,
+ * so the browser is what tells us a function was called — but it never tells us
+ * *who* is calling. Identity, club, role and the tool allow-list are all
+ * re-derived here from the session cookie, exactly as `chat` does.
+ */
+export const invokeTool = action({
+  args: {
+    name: v.string(),
+    /** Raw JSON arguments as the realtime model emitted them. */
+    args: v.string(),
+    todayIso: v.string(),
+  },
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{ output: string; changed: boolean }> => {
+    const loaded = await loadSession(ctx, args.todayIso);
+    if (!loaded.ok) {
+      return { output: JSON.stringify({ error: loaded.error }), changed: false };
+    }
+    const session = loaded.session;
+
+    const allowed = toolsFor(session.canWrite).some(
+      (tool) => tool.function.name === args.name,
+    );
+    if (!allowed) {
+      return {
+        output: JSON.stringify({ error: `Unknown tool ${args.name}` }),
+        changed: false,
+      };
+    }
+
+    const outcome = await runToolCall(ctx, session, args.name, args.args);
+    return {
+      output: JSON.stringify(outcome.result).slice(0, 16000),
+      changed: outcome.changed,
     };
   },
 });

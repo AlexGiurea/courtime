@@ -6,7 +6,14 @@
  * you get a character that reads as "the thing that keeps the club's time"
  * without borrowing anything from Breakpoint's tennis ball.
  */
-export type TempoState = "idle" | "thinking" | "happy";
+export type TempoState =
+  | "idle"
+  | "thinking"
+  | "happy"
+  /** Ear open, hand sweeping steadily: a call is live and it's your turn. */
+  | "listening"
+  /** Hand swings like a metronome while it talks. */
+  | "speaking";
 
 export function Tempo({
   size = 40,

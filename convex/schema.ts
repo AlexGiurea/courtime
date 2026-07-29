@@ -20,6 +20,29 @@ export const pageStatusValidator = v.union(
   v.literal("failed"),
 );
 
+/** The book has two kinds of page: the court grid, and the clinic sign-up sheet. */
+export const pageKindValidator = v.union(
+  v.literal("schedule"),
+  v.literal("clinics"),
+);
+
+/** One person signed up for a clinic, as written on the sheet. */
+export const clinicParticipantValidator = v.object({
+  name: v.string(),
+  phone: v.union(v.string(), v.null()),
+  // NTRP rating written in the left margin, e.g. "4.0".
+  rating: v.union(v.string(), v.null()),
+  note: v.union(v.string(), v.null()),
+});
+
+export const clinicDraftValidator = v.object({
+  title: v.string(),
+  startMin: v.union(v.number(), v.null()),
+  endMin: v.union(v.number(), v.null()),
+  participants: v.array(clinicParticipantValidator),
+  issue: v.union(v.string(), v.null()),
+});
+
 // One parsed booking as the vision model returns it, before a human confirms it.
 // `suggested*` are the server's best match against the club's real courts and
 // staff; the review UI shows them as pre-filled pickers the human can correct.
@@ -31,6 +54,8 @@ export const draftEntryValidator = v.object({
   coachName: v.union(v.string(), v.null()),
   sessionType: v.union(v.string(), v.null()),
   notes: v.union(v.string(), v.null()),
+  // The asterisk beside the booking: this client asked for this pro.
+  requested: v.optional(v.boolean()),
   confidence: v.union(v.literal("high"), v.literal("low")),
   issue: v.union(v.string(), v.null()),
   suggestedCourtId: v.optional(v.id("courts")),
@@ -85,6 +110,8 @@ export default defineSchema({
     label: v.string(),
     sessionType: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // The asterisk on the paper: this client asked for this pro by name.
+    requested: v.optional(v.boolean()),
     source: v.union(v.literal("manual"), v.literal("import")),
     sourcePageId: v.optional(v.id("importPages")),
     updatedAt: v.number(),
@@ -111,9 +138,16 @@ export default defineSchema({
     fileName: v.string(),
     dateHint: v.optional(v.string()),
     status: pageStatusValidator,
+    // Clinic sheets carry no date of their own; they inherit one from the
+    // court-grid page they were photographed alongside (see uploadIndex).
+    pageKind: v.optional(pageKindValidator),
+    uploadIndex: v.optional(v.number()),
+    pairedPageId: v.optional(v.id("importPages")),
+    clinicDrafts: v.optional(v.array(clinicDraftValidator)),
     // Filled in by the extraction action.
     detectedDate: v.optional(v.string()),
     draftEntries: v.optional(v.array(draftEntryValidator)),
+    dayNotes: v.optional(v.string()),
     courtCoaches: v.optional(
       v.array(v.object({ court: v.string(), coach: v.string() })),
     ),
@@ -144,6 +178,31 @@ export default defineSchema({
     affectedMembershipIds: v.array(v.id("memberships")),
     byUserId: v.optional(v.id("users")),
   }).index("by_org", ["orgId"]),
+
+  /** The back of the paper: who actually signed up for each clinic. */
+  clinicRosters: defineTable({
+    orgId: v.id("orgs"),
+    date: v.string(),
+    title: v.string(),
+    startMin: v.optional(v.number()),
+    endMin: v.optional(v.number()),
+    // Set when the roster has been matched to a booking on the court grid.
+    entryId: v.optional(v.id("entries")),
+    participants: v.array(clinicParticipantValidator),
+    sourcePageId: v.optional(v.id("importPages")),
+    updatedAt: v.number(),
+  })
+    .index("by_org_and_date", ["orgId", "date"])
+    .index("by_entry", ["entryId"]),
+
+  /** The NOTES column down the right-hand side of the paper page. */
+  dayNotes: defineTable({
+    orgId: v.id("orgs"),
+    date: v.string(),
+    body: v.string(),
+    updatedAt: v.number(),
+    updatedBy: v.optional(v.id("users")),
+  }).index("by_org_and_date", ["orgId", "date"]),
 
   pushSubscriptions: defineTable({
     userId: v.id("users"),

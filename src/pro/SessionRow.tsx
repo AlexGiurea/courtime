@@ -1,5 +1,8 @@
+import { useState } from "react";
 import { durationLabel, formatTime, initialsOf } from "../lib/time";
-import type { Member, ScheduleEntry } from "./data";
+import { AsteriskIcon } from "./icons";
+import RosterSheet from "./RosterSheet";
+import { hasRoster, type Member, type ScheduleEntry } from "./data";
 
 type Props = {
   entry: ScheduleEntry;
@@ -20,7 +23,15 @@ export default function SessionRow({
   showCoach = false,
   mine = false,
 }: Props) {
-  const className = ["session", state ? "next" : "", mine ? "mine" : ""]
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const rosterable = hasRoster(entry.sessionType);
+
+  const className = [
+    "session",
+    state ? "next" : "",
+    mine ? "mine" : "",
+    rosterable ? "tappable" : "",
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -52,15 +63,23 @@ export default function SessionRow({
       </div>
 
       <div className="body">
-        <div className="what">{entry.label}</div>
+        <div className="what">
+          {entry.label}
+          {entry.requested ? (
+            <span className="req-mark" title="This client asked for you by name">
+              <AsteriskIcon />
+            </span>
+          ) : null}
+        </div>
         <div className="where">{where}</div>
         {entry.notes ? <div className="notes">{entry.notes}</div> : null}
       </div>
 
-      {badge || type || avatar ? (
+      {badge || type || avatar || rosterable ? (
         <div className="trail">
           {badge ? <span className="tag accent">{badge}</span> : null}
           {type ? <span className="tag">{type}</span> : null}
+          {rosterable && !type ? <span className="tag">Roster</span> : null}
           {avatar ? (
             <span
               className="avatar"
@@ -71,6 +90,24 @@ export default function SessionRow({
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {/* A stretched hit target rather than a nested control, so the whole card
+          is tappable without turning the row into a button. */}
+      {rosterable ? (
+        <button
+          className="tap-target"
+          aria-label={`Who is in ${entry.label}`}
+          onClick={() => setSheetOpen(true)}
+        />
+      ) : null}
+
+      {sheetOpen ? (
+        <RosterSheet
+          entry={entry}
+          courtName={courtName}
+          onClose={() => setSheetOpen(false)}
+        />
       ) : null}
     </li>
   );

@@ -17,7 +17,14 @@ export type ScheduleEntry = {
   sessionType?: string;
   notes?: string;
   proMembershipId?: string;
+  /** The asterisk from the paper: this client asked for this pro by name. */
+  requested?: boolean;
 };
+
+/** Session types that can have a sign-up sheet behind them. A private cannot. */
+export function hasRoster(sessionType?: string): boolean {
+  return sessionType === "Clinic" || sessionType === "Group";
+}
 
 export type Court = { _id: string; name: string; sortOrder: number };
 

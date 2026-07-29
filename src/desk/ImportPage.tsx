@@ -128,7 +128,8 @@ function UploadView({ session }: { session: SessionWithClub }) {
             <>
               <h3>Drop schedule photos here</h3>
               <p>
-                Or click to choose them. One photo per day-page — up to 60 at a time.
+                Or click to choose them — up to 60 at a time. Courtime works out which
+                photos are court grids and which are clinic sign-up sheets.
               </p>
             </>
           )}
@@ -140,6 +141,20 @@ function UploadView({ session }: { session: SessionWithClub }) {
             hidden
             onChange={(e) => void upload(e.target.files)}
           />
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h2>Photograph each day front then back</h2>
+              <p>
+                The clinic sheet on the back of a page has no date written on it, so it
+                takes the date of the court grid photographed just before it. Keep each
+                day together — grid, then its sign-up sheet — and the pairing looks after
+                itself. You can always correct the date while reviewing.
+              </p>
+            </div>
+          </div>
         </div>
 
         <div className="card">
@@ -279,13 +294,23 @@ function BatchView({ batchId }: { batchId: Id<"importBatches"> }) {
                     <span className="sub">
                       {STATUS_COPY[page.status] ?? page.status}
                       {page.detectedDate ? ` · ${formatDateLong(page.detectedDate)}` : ""}
-                      {page.draftEntries
-                        ? ` · ${page.draftEntries.length} booking${page.draftEntries.length === 1 ? "" : "s"}`
-                        : ""}
+                      {page.pageKind === "clinics"
+                        ? ` · ${page.clinicDrafts?.length ?? 0} clinic${
+                            (page.clinicDrafts?.length ?? 0) === 1 ? "" : "s"
+                          }`
+                        : page.draftEntries
+                          ? ` · ${page.draftEntries.length} booking${page.draftEntries.length === 1 ? "" : "s"}`
+                          : ""}
                       {flagged ? ` · ${flagged} to check` : ""}
                       {page.error ? ` · ${page.error}` : ""}
                     </span>
                   </span>
+
+                  {page.pageKind ? (
+                    <span className="tag">
+                      {page.pageKind === "clinics" ? "Sign-up sheet" : "Court grid"}
+                    </span>
+                  ) : null}
 
                   {page.status === "queued" ||
                   page.status === "extracting" ||

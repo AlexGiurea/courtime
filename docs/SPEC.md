@@ -121,6 +121,29 @@ reads as "the thing that keeps the club's time". It shares nothing with Breakpoi
   onboarding flow must walk the pro through install (one-time, ~10s).
 - **Basic change alerts are FREE tier** (the "always current" promise). Smart digests/rules are paid.
 
+### 4.2b The book has two sides
+
+The paper page is double-sided. The front is the court grid. **The back is the clinic sign-up
+sheet** — boxed tables headed "Adult Clinic - 8 AM", "Rising Stars - 3:00pm-4:00pm", each a
+numbered Name / Phone list with an NTRP rating pencilled in the left margin. Courtime models both:
+
+- **A flip, not a tab.** The desk schedule page carries a two-option switch between **Court grid**
+  and **Clinics** for the same date, with a short page-turn animation (transform + opacity only,
+  no refetch, plain crossfade under `prefers-reduced-motion`). It is the same day seen from the
+  other side, so the date and the day arrows carry across.
+- **The roster behind a booking.** Tapping a clinic on the grid shows who is in it — for the front
+  desk and for the coach on their phone. `clinicRosters` links to an entry by `entryId` when known
+  and otherwise matches on start time, because the two sides of one sheet share their times.
+- **Notes.** The NOTES column down the right-hand side of the paper is free text for the day
+  ("Humbert would like Ct. 5", an account number). One note per date in `dayNotes`, editable by
+  the desk, readable by coaches.
+- **The asterisk.** A star beside a lesson on the paper means *this client asked for this pro by
+  name*. Stored as `entries.requested`; `schedule.setRequested` makes it a single click, because
+  the desk marks these while a member is still on the phone. Everyone sees it; only the desk sets it.
+- **Drag to extend.** On the desk grid, dragging a booking's bottom edge lengthens it, snapping to
+  30-minute slots and committing through the same `updateEntry` mutation (so overlaps are still
+  rejected with a readable message). Coaches cannot drag — the grid is read-only for them.
+
 ### 4.3 Importer (`/desk/import`) — the migration weapon
 - **Batch upload:** drag/select many photos at once (phone gallery or desktop). Photos go to Convex
   file storage via upload URLs; creates an `importBatches` doc with N `importPages` docs.
@@ -143,9 +166,19 @@ reads as "the thing that keeps the club's time". It shares nothing with Breakpoi
     review UI; none of it publishes on its own.
   - Provider-agnostic adapter so a Gemini bake-off is a config change, not a rewrite. (Planned
     bake-off: same 5 real pages through luna/sol/gemini, count wrong cells, pick default.)
+- **Two kinds of page, classified in the same call.** One prompt reads either face and reports
+  which it read (`pageKind: "schedule" | "clinics"`); a separate classification call would double
+  the cost for no accuracy. A declared kind that contradicts what actually came back (clinics but
+  all sessions, or no sessions and only clinics) is overridden by the content.
+- **Pairing, because a clinic sheet has no date on it.** Pages record their `uploadIndex`, and a
+  clinic sheet inherits the date of the nearest court-grid page uploaded *before* it. The pairing
+  is derived at read time rather than stored, so it stays correct however the pages finish
+  processing, and the reviewer can always override the date. The upload screen therefore asks for
+  one thing: photograph each day front then back, keeping each day together.
 - **Review screen (the trust anchor):** photo on left, parsed grid on right, low-confidence cells
   highlighted; tap-to-fix; nothing publishes until confirmed. Every published entry keeps
-  `sourcePageId` → tap any entry later to see the original paper photo (audit trail).
+  `sourcePageId` → tap any entry later to see the original paper photo (audit trail). A clinic
+  sheet gets its own review: clinics with times, and each signed-up player with phone and rating.
 
 ### 4.4 Landing page — separate static build (`landing/` in repo, deploys independently)
 - Level of finish: match the AIOS Agency site's professionalism, plus more motion: hero concept =
@@ -217,9 +250,12 @@ Convex tables (documents + indexes; times stored as minutes-from-midnight, 30-mi
 - `courts` — orgId, name, sortOrder, active. Index `by_org`.
 - `memberships` — userId (Convex Auth user id), orgId, role (`admin|staff|pro`), displayName,
   proColor?. Indexes `by_org`, `by_user`.
-- `entries` — orgId, courtId, date, startMin, endMin, proUserId?, label, notes?, source
-  (`manual|import`), sourcePageId?, createdBy, updatedAt. Indexes `by_org_date`,
-  `by_org_pro_date`.
+- `entries` — orgId, courtId, date, startMin, endMin, proMembershipId?, label, sessionType?, notes?,
+  `requested?` (the asterisk), source (`manual|import`), sourcePageId?, updatedAt. Indexes
+  `by_org_and_date`, `by_org_and_pro_and_date`, `by_source_page`.
+- `clinicRosters` — orgId, date, title, startMin?, endMin?, entryId?, participants
+  [{name, phone, rating, note}], sourcePageId?, updatedAt. Indexes `by_org_and_date`, `by_entry`.
+- `dayNotes` — orgId, date, body, updatedAt, updatedBy?. Index `by_org_and_date`.
 - `importBatches` — orgId, createdBy, status, model, totals { pages, confirmedPages, costUsd,
   inputTokens, outputTokens }. Index `by_org`.
 - `importPages` — batchId, orgId, photoStorageId (Convex storage), dateHint?, status, extraction?
