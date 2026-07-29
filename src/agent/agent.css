@@ -88,54 +88,103 @@
 
 /* ---------- launcher ---------- */
 
-.agent-launcher {
+/* The dock carries both doors — type, or talk — as one object, so the
+   microphone is a first-class way in rather than something you find inside. */
+.agent-dock {
   position: fixed;
   right: 20px;
   bottom: 20px;
   z-index: 90;
   display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  padding: 8px 16px 8px 9px;
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: 0 8px 28px rgba(16, 20, 24, 0.14);
-  cursor: pointer;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
+  align-items: stretch;
+  gap: 8px;
   transition:
     transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
-    box-shadow 220ms ease,
-    border-color 220ms ease,
     opacity 200ms ease;
 }
 
-.agent-launcher:hover {
-  transform: translateY(-2px);
-  border-color: var(--accent);
-  box-shadow: 0 12px 34px rgba(16, 20, 24, 0.18);
-}
-
-.agent-launcher:active {
-  transform: translateY(0);
-}
-
-.agent-launcher.is-open {
+.agent-dock.is-open {
   opacity: 0;
   pointer-events: none;
   transform: translateY(10px) scale(0.94);
 }
 
+/* The coach app owns the bottom of the screen with its tab bar. */
+.agent-dock.above-tabs {
+  bottom: calc(70px + env(safe-area-inset-bottom));
+}
+
+.agent-launcher,
+.agent-dock-mic {
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 8px 28px rgba(16, 20, 24, 0.14);
+  cursor: pointer;
+  color: var(--ink);
+  transition:
+    transform 220ms cubic-bezier(0.2, 0.7, 0.3, 1),
+    box-shadow 220ms ease,
+    border-color 220ms ease,
+    background 200ms ease,
+    color 200ms ease;
+}
+
+.agent-launcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 16px 8px 9px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.agent-dock-mic {
+  position: relative;
+  flex: none;
+  width: 44px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+}
+
+.agent-launcher:hover,
+.agent-dock-mic:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 12px 34px rgba(16, 20, 24, 0.18);
+}
+
+.agent-dock-mic:hover {
+  color: var(--accent);
+}
+
+.agent-launcher:active,
+.agent-dock-mic:active {
+  transform: translateY(0);
+}
+
+.agent-dock-mic.is-live {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+/* A call can outlive the panel being closed, so the dock has to say so. */
+.dock-live-dot {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
 .agent-launcher .hint {
   color: var(--muted);
   font-weight: 500;
-}
-
-/* The coach app owns the bottom of the screen with its tab bar. */
-.agent-launcher.above-tabs {
-  bottom: calc(70px + env(safe-area-inset-bottom));
 }
 
 /* ---------- panel ---------- */
@@ -193,13 +242,16 @@
   }
 }
 
+/* The header is the panel's title bar: the character, who it is, what it can do
+   for you, and the two controls you actually reach for. Paper rather than a
+   grey band, so the panel reads as one sheet instead of a stacked widget. */
 .agent-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 13px 12px 13px 14px;
   border-bottom: 1px solid var(--line);
-  background: var(--wash);
+  background: var(--paper);
   flex: none;
 }
 
@@ -210,13 +262,77 @@
 
 .agent-head strong {
   display: block;
-  font-size: 14px;
-  line-height: 1.2;
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .agent-head span.role {
   font-size: 11.5px;
   color: var(--muted);
+}
+
+/* The header's own microphone: named, not just an icon, because "you can talk
+   to this" is the thing people don't discover on their own. */
+.agent-talk {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px 5px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.agent-talk:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.agent-icon-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    color 150ms ease;
+}
+
+.agent-icon-btn:hover {
+  background: var(--wash);
+  color: var(--ink);
+}
+
+/* While the line is open the whole panel says so, not just the strip. */
+.agent-panel.is-calling {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px var(--accent-soft),
+    0 24px 60px rgba(16, 20, 24, 0.22);
+}
+
+.agent-empty-voice {
+  margin: 14px 0 0;
+  font-size: 12px;
+  color: var(--faint);
 }
 
 .agent-log {
@@ -410,16 +526,35 @@
    never moves and the composer stays where the hand already is. */
 .agent-voice {
   flex: none;
-  border-top: 1px solid var(--line);
-  background: var(--wash);
-  padding: 10px 12px;
+  border-top: 1px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 11px 12px;
   display: flex;
   flex-direction: column;
   gap: 7px;
+  animation: voice-strip-in 200ms cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@keyframes voice-strip-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 
 .agent-voice.has-fault {
   background: var(--danger-soft);
+  border-top-color: var(--danger);
+}
+
+.agent-voice .voice-status b {
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-voice {
+    animation: none;
+  }
 }
 
 .voice-row {
@@ -532,7 +667,7 @@
 }
 
 @media print {
-  .agent-launcher,
+  .agent-dock,
   .agent-panel {
     display: none !important;
   }

@@ -95,7 +95,7 @@ export const session = action({
         : "You cannot change anything. If asked to, say plainly that the front desk has to make that change.",
       "If more than one booking could be the one meant, ask one short question — 'the nine o'clock or the eleven?' — rather than guessing. Guessing wrong here moves a real lesson.",
       "If you did not catch something, say so and ask them to repeat it. Do not invent a name, a court or a time.",
-      `If you are asked to open the call, say one short line — something like "Hi ${agentSession.club.membership.displayName.split(/\s+/)[0] || "there"}, what do you need?" — and then stop and wait.`,
+      "Never speak first. The call opens with you silent and listening; say nothing at all until you are spoken to.",
       ...threadSoFar,
     ].join("\n");
 

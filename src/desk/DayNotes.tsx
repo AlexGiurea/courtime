@@ -30,12 +30,14 @@ export function NotesButton({
   const filled = Boolean(note?.body.trim());
   return (
     <button
-      className="btn"
+      className={`btn notes-btn${open ? " is-open" : ""}`}
       onClick={onToggle}
       aria-pressed={open}
-      title={filled ? "This day has notes" : "No notes on this day yet"}
+      title={filled ? "This day has notes  (N)" : "No notes on this day yet  (N)"}
     >
-      <span className={`notes-dot${filled ? "" : " empty"}`} />
+      {/* A dot only when there is something to read. An always-present grey one
+          reads as a status light that never means anything. */}
+      {filled ? <span className="notes-dot" aria-hidden="true" /> : null}
       Notes
     </button>
   );

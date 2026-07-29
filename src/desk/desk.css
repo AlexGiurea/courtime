@@ -218,16 +218,22 @@
 
 /* ---------- notes ---------- */
 
+/* Sized defensively: this dot sits inside a .btn, where a stray utility class
+   would otherwise be free to give it padding. */
 .notes-dot {
   width: 6px;
   height: 6px;
+  min-width: 6px;
+  min-height: 6px;
+  padding: 0;
   border-radius: 50%;
   background: var(--accent);
   flex: none;
 }
 
-.notes-dot.empty {
-  background: var(--line-strong);
+.notes-btn.is-open {
+  background: var(--wash);
+  border-color: var(--muted);
 }
 
 .notes-rail {
@@ -582,4 +588,59 @@
   .roster-drop {
     display: none !important;
   }
+}
+
+/* ---------- keyboard shortcuts ---------- */
+
+.keys-modal .keys-body {
+  padding: 4px 18px 20px;
+  overflow: auto;
+}
+
+.keys-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 20px 30px;
+}
+
+.keys-group h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.keys-group dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* A row per shortcut: keys held to a fixed column so every label starts on the
+   same line, which is what makes a list like this scannable. */
+.keys-row {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.keys-row:last-child {
+  border-bottom: none;
+}
+
+.keys-row dt {
+  display: flex;
+  gap: 3px;
+  justify-content: flex-end;
+}
+
+.keys-row dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
 }

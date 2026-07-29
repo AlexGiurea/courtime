@@ -214,7 +214,6 @@ export function useVoiceSession(options: VoiceOptions) {
   const speakingRef = useRef(false);
   const pendingToolsRef = useRef(0);
   const responseQueuedRef = useRef(false);
-  const greetRef = useRef(false);
 
   const teardown = useCallback(() => {
     const dc = dcRef.current;
@@ -333,13 +332,10 @@ export function useVoiceSession(options: VoiceOptions) {
 
       switch (type) {
         case "session.created":
+          // The line opens silent. Tempo answers, it doesn't greet — being
+          // spoken at the moment a call connects is startling, and the panel
+          // already says the microphone is live.
           setStatus("listening");
-          // Opening line, but only when there's nothing on screen yet — after a
-          // typed exchange it would just say out loud what's already readable.
-          if (greetRef.current) {
-            greetRef.current = false;
-            requestResponse();
-          }
           break;
         case "conversation.item.input_audio_transcription.delta": {
           const delta = String(event.delta ?? "");
@@ -494,7 +490,6 @@ export function useVoiceSession(options: VoiceOptions) {
     streamRef.current = stream;
 
     const priorTurns = optionsRef.current.history();
-    greetRef.current = priorTurns.length === 0;
 
     let secret: string;
     try {

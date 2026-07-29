@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useNavigate } from "react-router-dom";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
@@ -18,6 +18,8 @@ import CommandPalette from "./CommandPalette";
 import ClinicsFace from "./ClinicsFace";
 import { NotesButton, NotesRail } from "./DayNotes";
 import { usePageTurn } from "./PageTurn";
+import ShortcutsOverlay from "./ShortcutsOverlay";
+import { isBareKey, isTypingTarget } from "./shortcuts";
 import ImportPage from "./ImportPage";
 import ReviewPage from "./ReviewPage";
 import SettingsPage from "./SettingsPage";
@@ -25,45 +27,71 @@ import InsightsPage from "./InsightsPage";
 import "./desk.css";
 
 export default function DeskApp({ session }: { session: SessionWithClub }) {
+  const navigate = useNavigate();
   const [date, setDate] = useState(todayIso());
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [keysOpen, setKeysOpen] = useState(false);
   const [draft, setDraft] = useState<EntryDraft | null>(null);
 
-  const dialogOpen = draft !== null || paletteOpen;
+  const canEdit = session.membership.role !== "pro";
 
-  // Desk shortcuts. They stay out of the way whenever a field has focus.
+  // Both faces of the page and the notes rail live up here rather than in the
+  // schedule page, so there is exactly one keyboard handler for the desk and it
+  // can reach everything a shortcut is allowed to touch.
+  const pageTurn = usePageTurn<Face>("grid");
+  const { turnTo } = pageTurn;
+  const [notesOpen, setNotesOpen] = useState(false);
+
+  const dialogOpen = draft !== null || paletteOpen || keysOpen;
+
+  // Desk shortcuts, defined in ./shortcuts.ts. They stay out of the way
+  // whenever a field has focus — the desk types names with G and T in them.
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
-      const target = event.target as HTMLElement | null;
-      const typing =
-        target instanceof HTMLElement &&
-        (target.tagName === "INPUT" ||
-          target.tagName === "SELECT" ||
-          target.tagName === "TEXTAREA" ||
-          target.isContentEditable);
-
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
         setPaletteOpen(true);
         return;
       }
 
-      if (typing || dialogOpen) return;
+      if (isTypingTarget(event.target) || dialogOpen) return;
 
       if (event.key === "ArrowLeft") {
         event.preventDefault();
         setDate((d) => addDays(d, event.shiftKey ? -7 : -1));
-      } else if (event.key === "ArrowRight") {
+        return;
+      }
+      if (event.key === "ArrowRight") {
         event.preventDefault();
         setDate((d) => addDays(d, event.shiftKey ? 7 : 1));
-      } else if (event.key.toLowerCase() === "t") {
-        setDate(todayIso());
+        return;
       }
+      if (event.key === "?") {
+        event.preventDefault();
+        setKeysOpen(true);
+        return;
+      }
+
+      if (isBareKey(event, "t")) return setDate(todayIso());
+      if (isBareKey(event, "g")) return turnTo("grid", -1);
+      if (isBareKey(event, "c")) return turnTo("clinics", 1);
+      if (isBareKey(event, "n")) return setNotesOpen((open) => !open);
+      if (isBareKey(event, "p")) {
+        event.preventDefault();
+        window.print();
+        return;
+      }
+
+      // The rest move you between pages, which is the desk's job, not a pro's.
+      if (!canEdit) return;
+      if (isBareKey(event, "i")) return navigate("/desk/import");
+      if (isBareKey(event, "r")) return navigate("/desk/insights");
+      if (isBareKey(event, "s")) return navigate("/desk/settings");
     }
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dialogOpen]);
+  }, [dialogOpen, canEdit, navigate, turnTo]);
 
   const openCreate = useCallback(
     (courtId: Id<"courts">, startMin: number, seedText?: string) => {
@@ -94,6 +122,9 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
               setDate={setDate}
               onCreate={openCreate}
               onOpen={openEntry}
+              pageTurn={pageTurn}
+              notesOpen={notesOpen}
+              setNotesOpen={setNotesOpen}
             />
           }
         />
@@ -120,11 +151,20 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
           onClose={() => setPaletteOpen(false)}
         />
       ) : null}
+
+      {keysOpen ? (
+        <ShortcutsOverlay
+          canEdit={canEdit}
+          showTempo={session.org.plan === "pro"}
+          onClose={() => setKeysOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
 
 type Face = "grid" | "clinics";
+type PageTurn = ReturnType<typeof usePageTurn<Face>>;
 
 function SchedulePage({
   session,
@@ -132,12 +172,18 @@ function SchedulePage({
   setDate,
   onCreate,
   onOpen,
+  pageTurn,
+  notesOpen,
+  setNotesOpen,
 }: {
   session: SessionWithClub;
   date: string;
   setDate: (iso: string) => void;
   onCreate: (courtId: Id<"courts">, startMin: number, seedText?: string) => void;
   onOpen: (entry: GridEntry) => void;
+  pageTurn: PageTurn;
+  notesOpen: boolean;
+  setNotesOpen: (update: (open: boolean) => boolean) => void;
 }) {
   // Both faces and the notes column subscribe from here, so turning the page
   // never re-fetches and the day bar can tell you what is on the other side.
@@ -149,8 +195,7 @@ function SchedulePage({
   const relative = relativeDayLabel(date, today);
   const canEdit = session.membership.role !== "pro";
 
-  const { shown, face, turnTo, faceProps } = usePageTurn<Face>("grid");
-  const [notesOpen, setNotesOpen] = useState(false);
+  const { shown, face, turnTo, faceProps } = pageTurn;
 
   const stats = useMemo(() => {
     const entries = day?.entries ?? [];
@@ -258,11 +303,12 @@ function SchedulePage({
           ? "The back of the page: who signed up for each clinic. "
           : "Click any empty slot to book it. Drag a booking's bottom edge to lengthen it. "}
         <kbd>←</kbd> <kbd>→</kbd> move a day, <kbd>Shift</kbd> a week, <kbd>T</kbd>{" "}
-        jumps to today, <kbd>Ctrl</kbd> <kbd>K</kbd> jumps to any date.
+        jumps to today, <kbd>Ctrl</kbd> <kbd>K</kbd> jumps to any date.{" "}
+        <kbd>?</kbd> shows every shortcut.
       </p>
 
       {notesOpen ? (
-        <NotesRail date={date} note={note} onClose={() => setNotesOpen(false)} />
+        <NotesRail date={date} note={note} onClose={() => setNotesOpen(() => false)} />
       ) : null}
     </div>
   );

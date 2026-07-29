@@ -5,6 +5,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { SessionWithClub } from "../App";
 import { Avatar, useGuarded } from "../ui";
 import { formatTime } from "../lib/time";
+import { ShortcutTable } from "./ShortcutsOverlay";
 
 const HOUR_CHOICES = Array.from({ length: 19 }, (_, i) => (i + 5) * 60);
 
@@ -43,6 +44,7 @@ export default function SettingsPage({ session }: { session: SessionWithClub }) 
   const guarded = useGuarded();
 
   const isAdmin = membership.role === "admin";
+  const canEdit = membership.role !== "pro";
   const [name, setName] = useState(org.name);
   const [dayStartMin, setDayStartMin] = useState(org.dayStartMin);
   const [dayEndMin, setDayEndMin] = useState(org.dayEndMin);
@@ -379,6 +381,21 @@ export default function SettingsPage({ session }: { session: SessionWithClub }) 
               </button>
             </div>
           ) : null}
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h2>Keyboard shortcuts</h2>
+              <p>
+                The desk is faster on the keyboard than on the mouse. Press{" "}
+                <kbd>?</kbd> anywhere to bring this list up without leaving the day.
+              </p>
+            </div>
+          </div>
+          <div className="card-pad">
+            <ShortcutTable canEdit={canEdit} showTempo={org.plan === "pro"} />
+          </div>
         </div>
       </div>
     </div>

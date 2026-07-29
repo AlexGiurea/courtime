@@ -89,6 +89,12 @@ reads as "the thing that keeps the club's time". It shares nothing with Breakpoi
   `list_bookings` is filtered to their own column. This is enforced server-side, not by asking the
   model nicely.
 - **Pro-gated** in `agent.availability`, so the launcher does not render at all on Free.
+- **Two doors, one room.** The dock carries the launcher *and* a microphone button, and `A` / `V`
+  reach them from anywhere. Voice and text are the same thread and the same tools — typing during a
+  call routes into the realtime session rather than starting a second, deaf assistant.
+- **Tempo never speaks first.** A call opens silent and listening; being spoken at the moment a line
+  connects is startling, and it makes the assistant feel like it wants something. The panel is what
+  says the microphone is live ("Go ahead — I'm listening"), not Tempo.
 - Conversation lives in client state and is passed back each turn (last 12 messages) — no threads
   table in v1.
 - Implementation note: this model family rejects function tools unless `reasoning_effort` is
@@ -103,7 +109,13 @@ reads as "the thing that keeps the club's time". It shares nothing with Breakpoi
   - `Ctrl+K` command palette: type `nov 12`, `next tuesday`, `today` → jump. (Pro tier later: same
     box accepts natural-language agent queries.)
   - `←/→` previous/next day, `Shift+←/→` week jump, `T` today.
+  - Bare letters for the things the desk does all shift: `G` court grid, `C` clinic sheet, `N` day
+    notes, `P` print, `I` import, `R` insights, `S` settings, `A`/`V` Tempo, `?` the whole list.
   - Type directly into focused cell to create an entry; `Esc` cancels, `Enter` commits.
+  - **One list, three renderings.** `src/desk/shortcuts.ts` is the source of truth — the handler,
+    the `?` overlay and the Settings card all read it, so a shortcut can't exist in the app without
+    appearing in the list a club is told to trust. Every bare letter checks `isTypingTarget` first,
+    or the desk can't type a name with a G in it.
 - **Print day sheet:** `Ctrl+P` / button → clean printable layout of the day grid (close to the
   paper book's format). First-class feature, not an afterthought (see §2).
 - **Live updates:** free with Convex — `useQuery` subscriptions are reactive, so the grid updates

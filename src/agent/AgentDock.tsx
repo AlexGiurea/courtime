@@ -6,6 +6,7 @@ import { Tempo, type TempoState } from "./Tempo";
 import { VoiceBars } from "./VoiceBars";
 import { useVoiceSession, type VoiceStatus } from "./voice";
 import { cleanError } from "../ui";
+import { isBareKey, isTypingTarget } from "../desk/shortcuts";
 import { todayIso } from "../lib/time";
 import "./agent.css";
 
@@ -28,13 +29,38 @@ const COACH_SUGGESTIONS = [
   "How many hours am I teaching this week?",
 ];
 
+/* Tempo never speaks first, so the panel has to be the thing that says the line
+   is open — otherwise a connected call and a dead one look identical. */
 const CALL_STATE: Record<VoiceStatus, { title: string; hint: string }> = {
   idle: { title: "", hint: "" },
-  connecting: { title: "Connecting", hint: "Opening the line" },
-  listening: { title: "Listening", hint: "Just say it" },
+  connecting: { title: "Opening the line", hint: "One second" },
+  listening: { title: "Go ahead — I'm listening", hint: "Just talk, no need to press anything" },
   thinking: { title: "Working on it", hint: "One moment" },
   speaking: { title: "Tempo is speaking", hint: "Talk over it to cut in" },
 };
+
+/** One microphone, drawn once — the dock, the header and the composer share it. */
+function MicGlyph({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <rect
+        x="5.6"
+        y="1.6"
+        width="4.8"
+        height="8"
+        rx="2.4"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M3.2 7.4a4.8 4.8 0 0 0 9.6 0M8 12.2v2.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 export default function AgentDock() {
   const availability = useQuery(api.agent.availability);
@@ -85,6 +111,13 @@ export default function AgentDock() {
 
   const { stop: stopVoice } = voice;
 
+  // The shortcut handler is registered once; it reads the live session through
+  // this rather than re-binding the listener on every status change.
+  const voiceRef = useRef(voice);
+  voiceRef.current = voice;
+
+  const canTalk = Boolean(availability?.pro && availability.voice);
+
   useEffect(() => {
     if (logRef.current) {
       logRef.current.scrollTop = logRef.current.scrollHeight;
@@ -95,16 +128,36 @@ export default function AgentDock() {
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  /** Open the panel and put the microphone straight on the line. */
+  const startCall = useCallback(() => {
+    setOpen(true);
+    if (!voiceRef.current.active) void voiceRef.current.start();
+  }, []);
+
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
       if (event.key === "Escape" && open) {
         stopVoice();
         setOpen(false);
+        return;
+      }
+
+      // A and V reach Tempo from anywhere in the app, in the same bare-letter
+      // idiom as the desk's own shortcuts, and stay silent while anyone types.
+      if (isTypingTarget(event.target)) return;
+      if (isBareKey(event, "a") && !open) {
+        event.preventDefault();
+        setOpen(true);
+        return;
+      }
+      if (isBareKey(event, "v") && canTalk) {
+        event.preventDefault();
+        startCall();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [open, stopVoice]);
+  }, [open, stopVoice, startCall, canTalk]);
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -174,18 +227,34 @@ export default function AgentDock() {
           stray re-render can't cut the audio mid-sentence. */}
       <audio ref={audioRef} autoPlay playsInline className="agent-voice-audio" />
 
-      <button
-        className={`agent-launcher${open ? " is-open" : ""}${onCoachSide ? " above-tabs" : ""}`}
-        onClick={() => setOpen(true)}
-        aria-label="Open Tempo, the Courtime assistant"
-      >
-        <Tempo size={30} state="idle" />
-        Ask Tempo
-      </button>
+      {/* Two doors into the same room: type, or talk. The microphone is its own
+          button rather than something you find after opening the panel. */}
+      <div className={`agent-dock${open ? " is-open" : ""}${onCoachSide ? " above-tabs" : ""}`}>
+        <button
+          className="agent-launcher"
+          onClick={() => setOpen(true)}
+          aria-label="Open Tempo, the Courtime assistant"
+          title="Ask Tempo  ·  A"
+        >
+          <Tempo size={30} state={voice.active ? tempoState : "idle"} />
+          Ask Tempo
+        </button>
+        {availability.voice ? (
+          <button
+            className={`agent-dock-mic${voice.active ? " is-live" : ""}`}
+            onClick={startCall}
+            aria-label="Talk to Tempo"
+            title="Talk to Tempo  ·  V"
+          >
+            <MicGlyph />
+            {voice.active ? <span className="dock-live-dot" aria-hidden="true" /> : null}
+          </button>
+        ) : null}
+      </div>
 
       {open ? (
         <div
-          className={`agent-panel${onCoachSide ? " above-tabs" : ""}`}
+          className={`agent-panel${onCoachSide ? " above-tabs" : ""}${voice.active ? " is-calling" : ""}`}
           role="dialog"
           aria-label="Tempo assistant"
         >
@@ -194,29 +263,59 @@ export default function AgentDock() {
             <span className="who">
               <strong>Tempo</strong>
               <span className="role">
-                {canWrite
-                  ? "Reads and changes the schedule"
-                  : "Reads your schedule"}
+                {voice.active
+                  ? "On a call"
+                  : canWrite
+                    ? "Reads and changes the schedule"
+                    : "Reads your schedule"}
               </span>
             </span>
+
+            {availability.voice && !voice.active ? (
+              <button
+                className="agent-talk"
+                onClick={() => void voice.start()}
+                title="Talk to Tempo  ·  V"
+              >
+                <MicGlyph />
+                Talk
+              </button>
+            ) : null}
             {messages.length ? (
               <button
-                className="btn ghost sm"
+                className="agent-icon-btn"
                 onClick={() => setMessages([])}
-                title="Start over"
+                title="Clear the conversation"
+                aria-label="Clear the conversation"
               >
-                Clear
+                <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path
+                    d="M3 4.5h10M6.5 4.5V3.2h3v1.3M4.5 4.5l.6 8.1h5.8l.6-8.1"
+                    stroke="currentColor"
+                    strokeWidth="1.3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </button>
             ) : null}
             <button
-              className="btn ghost sm"
+              className="agent-icon-btn"
               onClick={() => {
                 stopVoice();
                 setOpen(false);
               }}
+              title="Close  ·  Esc"
               aria-label="Close the assistant"
             >
-              Esc
+              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path
+                  d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+              </svg>
             </button>
           </div>
 
@@ -241,6 +340,11 @@ export default function AgentDock() {
                     </button>
                   ))}
                 </div>
+                {availability.voice ? (
+                  <p className="agent-empty-voice">
+                    Or press <kbd>V</kbd> and say it out loud.
+                  </p>
+                ) : null}
               </div>
             ) : (
               messages.map((message, index) => {
@@ -331,29 +435,7 @@ export default function AgentDock() {
                     <rect x="3.5" y="3.5" width="9" height="9" rx="2" fill="currentColor" />
                   </svg>
                 ) : (
-                  <svg
-                    width="16"
-                    height="16"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    aria-hidden="true"
-                  >
-                    <rect
-                      x="5.6"
-                      y="1.6"
-                      width="4.8"
-                      height="8"
-                      rx="2.4"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    />
-                    <path
-                      d="M3.2 7.4a4.8 4.8 0 0 0 9.6 0M8 12.2v2.2"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <MicGlyph />
                 )}
               </button>
             ) : null}
@@ -363,7 +445,7 @@ export default function AgentDock() {
               rows={1}
               placeholder={
                 voice.active
-                  ? "Talking — or type, and Tempo answers out loud…"
+                  ? "On a call — or type instead…"
                   : canWrite
                     ? "Ask, or tell me what to change…"
                     : "Ask about your schedule…"

@@ -76,6 +76,13 @@ number — so it runs down the side of the app too, one note per day, saved as y
 It's one click at the desk, it shows on the coach's phone, and it's the number a director wants at
 review time.
 
+**The keyboard runs the desk.** Arrows move a day, <kbd>Shift</kbd> a week, <kbd>T</kbd> is today
+and <kbd>Ctrl</kbd><kbd>K</kbd> jumps to any date; single letters do the rest — <kbd>G</kbd> and
+<kbd>C</kbd> turn the page over, <kbd>N</kbd> opens the notes, <kbd>P</kbd> prints, <kbd>I</kbd>,
+<kbd>R</kbd> and <kbd>S</kbd> move between pages, <kbd>A</kbd> and <kbd>V</kbd> reach Tempo.
+<kbd>?</kbd> shows the whole list, and so does Settings — both render the same list the handler
+reads, so what a club is told is what the app actually does.
+
 **Drag to extend.** Dragging a booking's bottom edge lengthens it, snapping to the half hour, the
 same gesture as Google Calendar. It commits through the same mutation as everything else, so a drag
 onto an occupied slot comes back refused rather than silently overlapping. Coaches can't drag —
@@ -112,11 +119,15 @@ sees their own column — enforced on the server, not by asking the model nicely
 
 ![Tempo booking a lesson](docs/media/agent-tempo.png)
 
-**You can also just talk to it.** Tapping the mic opens a live voice call over WebRTC — the API key
-never reaches the browser, only a short-lived session minted on the server. Voice and text share one
-brain: the same tools, the same permission gate, the same thread, so you can start typing and finish
-talking. There's no orb. A row of eleven hairline bars reads the actual audio — grey while you
-speak, green while Tempo does — and Tempo's clock hand swings like a metronome while it answers.
+**You can also just talk to it.** The microphone sits in the dock beside the launcher, or press
+<kbd>V</kbd> from anywhere, and a live voice call opens over WebRTC — the API key never reaches the
+browser, only a short-lived session minted on the server. Voice and text share one brain: the same
+tools, the same permission gate, the same thread, so you can start typing and finish talking.
+
+Tempo never speaks first. The line opens silent and the panel tells you it's listening, because
+being greeted by software the moment a call connects is startling. There's no orb either — a row of
+eleven hairline bars reads the actual audio, grey while you speak and green while Tempo does, and
+Tempo's clock hand swings like a metronome while it answers.
 
 ![Tempo on a call](docs/media/agent-voice.png)
 
