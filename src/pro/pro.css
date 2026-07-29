@@ -4,6 +4,14 @@
 
 .pro-shell {
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  /* The club's grid is wider than any phone. This is a flex item, and a flex
+     item's default `min-width: auto` refuses to shrink below its content — so
+     without this the shell grows to the grid's width, the mobile browser zooms
+     the whole app out to fit, and the day nav ends up off the right edge. The
+     page never scrolls sideways; the grid inside it does. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .pro-daynav .label {
@@ -337,4 +345,233 @@
 
 .pro-tabs svg {
   display: block;
+}
+
+/* ---------- the coach's calendar grid ---------- */
+
+/* Both directions scroll: courts run off the right of a phone, and the club's
+   day is taller than the screen. Momentum scrolling so it feels native. */
+/* `width: 0` with `min-width: 100%` is the trick that matters here: a plain
+   auto-width box contributes its *content's* min-content width to every
+   ancestor, so the 800px grid would widen the shell, and a mobile browser then
+   zooms the whole app out to fit it. Zero width contributes nothing upward;
+   min-width fills the space that's actually there. */
+.pro-grid-wrap {
+  overflow: auto;
+  width: 0;
+  min-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--paper);
+  max-height: 68vh;
+}
+
+.pro-grid {
+  display: grid;
+  position: relative;
+  min-width: min-content;
+}
+
+.pro-grid-head,
+.pro-grid-time,
+.pro-grid-cell {
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  min-width: 0;
+}
+
+.pro-grid-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--wash);
+  padding: 7px 9px;
+  font-weight: 650;
+  line-height: 1.25;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.pro-grid-head.corner {
+  left: 0;
+  z-index: 5;
+}
+
+.pro-grid-head .coach {
+  display: block;
+  font-weight: 400;
+  font-size: 0.85em;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The time column stays put while the courts scroll past it — without it you
+   lose track of what hour you are looking at two courts to the right. */
+.pro-grid-time {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--paper);
+  padding: 2px 6px 0 0;
+  text-align: right;
+  font-size: 0.85em;
+  color: var(--faint);
+  border-right: 1px solid var(--line-strong);
+}
+
+.pro-grid-time.hour {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.pro-grid-cell.half {
+  border-bottom-color: transparent;
+}
+
+.pro-entry {
+  margin: 1px 2px;
+  padding: 4px 6px;
+  border: 1px solid var(--line-strong);
+  border-left-width: 3px;
+  border-radius: 5px;
+  background: var(--paper);
+  overflow: hidden;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The coach's own hours are the point of the screen, so they carry the accent
+   and everyone else's are quiet around them. */
+.pro-entry.mine {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+
+.pro-entry.open-play {
+  background: var(--wash);
+  border-left-color: var(--line-strong);
+  color: var(--muted);
+}
+
+.pro-entry-label {
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.pro-entry-star {
+  color: var(--warn);
+  margin-left: 3px;
+}
+
+.pro-entry-meta {
+  font-size: 0.85em;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- the week total ---------- */
+
+.week-total {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.week-total-label {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+
+.week-total strong {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+}
+
+.week-total-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---------- a day with nothing on it ---------- */
+
+.day-off {
+  text-align: center;
+  padding: 38px 24px 44px;
+  color: var(--accent);
+}
+
+.day-off h3 {
+  margin: 14px 0 6px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.day-off p {
+  margin: 0 auto;
+  max-width: 34ch;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* ---------- the club day's toolbar ---------- */
+
+.club-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 10px;
+}
+
+.club-count {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zoom-group {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.club-saved {
+  margin: 0 0 10px;
+  padding: 8px 11px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.club-hint {
+  margin: 8px 2px 0;
+  font-size: 11.5px;
+  color: var(--faint);
 }

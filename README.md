@@ -131,6 +131,19 @@ Tempo's clock hand swings like a metronome while it answers.
 
 ![Tempo on a call](docs/media/agent-voice.png)
 
+## Two apps, one backend
+
+The club and the coach are different products that share a database. The desk is
+a wide keyboard-driven console; the coach's is a phone app they install to a home
+screen and open between lessons. [`src/face.ts`](src/face.ts) decides which one a
+build is — `VITE_APP_FACE=coach` on a second Vercel project off this same repo, or
+a `my.` / `coach.` / `pro.` subdomain on one deployment. On the coach's face there
+is no desk to route to: even a director who signs in lands on their own schedule.
+
+Nothing about safety rests on that switch. Every query and mutation is gated by
+membership role on the server, so the face only ever decides which chrome you get
+— not what you're allowed to read or change.
+
 ## Built with
 
 | | |

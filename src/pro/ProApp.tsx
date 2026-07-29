@@ -27,6 +27,8 @@ export default function ProApp() {
       membershipId: membership._id,
       displayName: membership.displayName,
       orgName: org.name,
+      dayStartMin: org.dayStartMin,
+      dayEndMin: org.dayEndMin,
       courts: session.courts,
       members: session.members,
     };

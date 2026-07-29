@@ -95,3 +95,32 @@ export function CloseIcon({ size = 14 }: IconProps) {
     </svg>
   );
 }
+
+export function ZoomIn({ size = 15 }: IconProps) {
+  return (
+    <svg {...frame(size)}>
+      <circle cx="8.6" cy="8.6" r="5.4" />
+      <path d="M12.6 12.6 17 17M8.6 6.4v4.4M6.4 8.6h4.4" />
+    </svg>
+  );
+}
+
+export function ZoomOut({ size = 15 }: IconProps) {
+  return (
+    <svg {...frame(size)}>
+      <circle cx="8.6" cy="8.6" r="5.4" />
+      <path d="M12.6 12.6 17 17M6.4 8.6h4.4" />
+    </svg>
+  );
+}
+
+/** Save the day as a picture — a frame with a horizon, not a camera. */
+export function ImageIcon({ size = 15 }: IconProps) {
+  return (
+    <svg {...frame(size)}>
+      <rect x="2.8" y="3.6" width="14.4" height="12.8" rx="2" />
+      <path d="M2.8 13 7 9.4l3.4 2.8L13.4 9l3.8 3.4" />
+      <circle cx="7.4" cy="7.4" r="1.2" />
+    </svg>
+  );
+}

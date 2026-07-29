@@ -15,6 +15,7 @@ import Onboarding from "./screens/Onboarding";
 import DeskApp from "./desk/DeskApp";
 import ProApp from "./pro/ProApp";
 import AgentDock from "./agent/AgentDock";
+import { isCoachApp } from "./face";
 import { Avatar, BrandMark, Loading } from "./ui";
 
 export type Session = Extract<
@@ -57,6 +58,24 @@ function SignedIn() {
 
   const scoped = session as SessionWithClub;
   const deskAllowed = scoped.membership.role !== "pro";
+
+  // On the coach's own deployment there is no desk to route to, and no reason
+  // for a coach to carry the club console around in their bundle. Every path
+  // lands on their schedule.
+  if (isCoachApp()) {
+    return (
+      <>
+        <div className="shell">
+          <TopBar session={scoped} />
+          <Routes>
+            <Route path="/me/*" element={<ProApp />} />
+            <Route path="*" element={<Navigate to="/me" replace />} />
+          </Routes>
+        </div>
+        <AgentDock />
+      </>
+    );
+  }
 
   return (
     <>

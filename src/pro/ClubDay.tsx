@@ -3,24 +3,35 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { addDays, formatDateLong, relativeDayLabel } from "../lib/time";
 import DayNav from "./DayNav";
-import SessionRow from "./SessionRow";
+import ProGrid from "./ProGrid";
+import { saveDayImage } from "./dayImage";
+import { ImageIcon, ZoomIn, ZoomOut } from "./icons";
 import {
   memberMap,
   type ProData,
-  type ScheduleEntry,
   sessionCount,
   useClock,
   useSwipeDays,
 } from "./data";
 
+/** Three steps is enough: a court at a time, three at a time, the whole club. */
+const ZOOMS = [0.62, 0.82, 1.05];
+
 /**
- * The whole club's day, read-only. Grouped by court because that is the shape of
- * the page on the desk — the question a coach is answering is usually "who has
- * court 3 at four?".
+ * The club's whole day on a phone — the same grid the front desk is looking at,
+ * not a summarised list of it. A coach walking in wants the page they'd have
+ * read off the wall: who is on which court, with their own hours picked out.
+ *
+ * It scrolls in both directions and zooms out to the whole club, and it saves
+ * to the camera roll, because the way a coach actually shares a day is by
+ * sending someone a picture of it.
  */
 export default function ClubDay({ pro }: { pro: ProData }) {
   const { today } = useClock();
   const [date, setDate] = useState(today);
+  const [zoomStep, setZoomStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<string | null>(null);
 
   const result = useQuery(api.schedule.clubDay, { date });
   const members = useMemo(() => memberMap(pro.members), [pro.members]);
@@ -29,18 +40,50 @@ export default function ClubDay({ pro }: { pro: ProData }) {
     () => setDate((current) => addDays(current, 1)),
   );
 
-  const byCourt = useMemo(() => {
-    const groups = new Map<string, ScheduleEntry[]>();
-    for (const court of pro.courts) groups.set(court._id, []);
-    const loose: ScheduleEntry[] = [];
-    const all: ScheduleEntry[] = result?.entries ?? [];
-    for (const entry of all) {
-      const bucket = groups.get(entry.courtId);
-      if (bucket) bucket.push(entry);
-      else loose.push(entry);
+  const entries = useMemo(() => result?.entries ?? [], [result]);
+
+  const columns = useMemo(
+    () =>
+      pro.courts.map((court) => {
+        const coached = entries.find(
+          (entry) => entry.courtId === court._id && entry.proMembershipId,
+        );
+        const name = coached?.proMembershipId
+          ? (members.get(coached.proMembershipId)?.displayName ?? null)
+          : null;
+        return { id: court._id, name: court.name, sub: name ?? "Open play" };
+      }),
+    [pro.courts, entries, members],
+  );
+
+  async function onSave() {
+    setSaving(true);
+    setSaved(null);
+    try {
+      const outcome = await saveDayImage({
+        clubName: pro.orgName,
+        heading: "The club",
+        date,
+        columns,
+        entries,
+        columnOf: (entry) => entry.courtId,
+        dayStartMin: pro.dayStartMin,
+        dayEndMin: pro.dayEndMin,
+        members,
+        mineId: pro.membershipId,
+      });
+      setSaved(
+        outcome === "shared"
+          ? "Sent to your share sheet — choose Save Image."
+          : outcome === "downloaded"
+            ? "Saved as a PNG."
+            : "That didn't save. Try again?",
+      );
+    } finally {
+      setSaving(false);
+      window.setTimeout(() => setSaved(null), 6000);
     }
-    return { groups, loose };
-  }, [result, pro.courts]);
+  }
 
   return (
     <>
@@ -51,90 +94,86 @@ export default function ClubDay({ pro }: { pro: ProData }) {
 
       <DayNav date={date} today={today} onChange={setDate} />
 
-      <div {...swipe}>
-        {result === undefined ? (
-          <div className="pro-loading">
-            <span className="spinner" />
-            Loading the club's day…
-          </div>
-        ) : result === null || result.allowed === false ? (
-          <Restricted />
-        ) : result.entries.length === 0 ? (
-          <div className="empty">
-            <p className="empty-line">
-              No courts booked{" "}
-              {relativeDayLabel(date, today)?.toLowerCase() ??
-                `on ${formatDateLong(date).split(",")[0]}`}
-              .
-            </p>
-            <p className="empty-sub">The whole club is open — for now.</p>
-          </div>
-        ) : (
-          <>
-            <p className="pro-summary tabular">
-              {sessionCount(result.entries.length)} across the club
-            </p>
+      {result === undefined ? (
+        <div className="pro-loading">
+          <span className="spinner" />
+          Loading the club's day…
+        </div>
+      ) : result === null || result.allowed === false ? (
+        <Restricted />
+      ) : (
+        <>
+          <div className="club-tools">
+            <span className="club-count tabular">
+              {entries.length === 0
+                ? "Nothing booked"
+                : `${sessionCount(entries.length)} across the club`}
+            </span>
 
-            {pro.courts.map((court) => {
-              const entries = byCourt.groups.get(court._id) ?? [];
-              return (
-                <section className="daygroup" key={court._id}>
-                  <h3>
-                    <span>{court.name}</span>
-                    <span className="total tabular">
-                      {entries.length === 0 ? "Open all day" : sessionCount(entries.length)}
-                    </span>
-                  </h3>
-                  {entries.length === 0 ? (
-                    <p className="day-clear">Nothing booked.</p>
-                  ) : (
-                    <ul className="session-list">
-                      {entries.map((entry) => (
-                        <SessionRow
-                          key={entry._id}
-                          entry={entry}
-                          courtName={court.name}
-                          showCoach
-                          coach={
-                            entry.proMembershipId
-                              ? (members.get(entry.proMembershipId) ?? null)
-                              : null
-                          }
-                          mine={entry.proMembershipId === pro.membershipId}
-                        />
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              );
-            })}
+            <div className="zoom-group" role="group" aria-label="Zoom">
+              <button
+                type="button"
+                className="btn sm pro-icon-btn"
+                aria-label="Zoom out"
+                disabled={zoomStep === 0}
+                onClick={() => setZoomStep((step) => Math.max(0, step - 1))}
+              >
+                <ZoomOut />
+              </button>
+              <button
+                type="button"
+                className="btn sm pro-icon-btn"
+                aria-label="Zoom in"
+                disabled={zoomStep === ZOOMS.length - 1}
+                onClick={() => setZoomStep((step) => Math.min(ZOOMS.length - 1, step + 1))}
+              >
+                <ZoomIn />
+              </button>
+            </div>
 
-            {byCourt.loose.length > 0 ? (
-              <section className="daygroup">
-                <h3>
-                  <span>Other courts</span>
-                </h3>
-                <ul className="session-list">
-                  {byCourt.loose.map((entry) => (
-                    <SessionRow
-                      key={entry._id}
-                      entry={entry}
-                      courtName="Court"
-                      showCoach
-                      coach={
-                        entry.proMembershipId
-                          ? (members.get(entry.proMembershipId) ?? null)
-                          : null
-                      }
-                      mine={entry.proMembershipId === pro.membershipId}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ) : null}
-          </>
-        )}
-      </div>
+            <button
+              type="button"
+              className="btn sm"
+              onClick={() => void onSave()}
+              disabled={saving || entries.length === 0}
+            >
+              {saving ? <span className="spinner" /> : <ImageIcon />}
+              Save image
+            </button>
+          </div>
+
+          {saved ? <p className="club-saved">{saved}</p> : null}
+
+          {entries.length === 0 ? (
+            <div className="empty">
+              <p className="empty-line">
+                No courts booked{" "}
+                {relativeDayLabel(date, today)?.toLowerCase() ??
+                  `on ${formatDateLong(date).split(",")[0]}`}
+                .
+              </p>
+              <p className="empty-sub">The whole club is open — for now.</p>
+            </div>
+          ) : (
+            <div {...swipe}>
+              <ProGrid
+                columns={columns}
+                entries={entries}
+                columnOf={(entry) => entry.courtId}
+                dayStartMin={pro.dayStartMin}
+                dayEndMin={pro.dayEndMin}
+                members={members}
+                mineId={pro.membershipId}
+                zoom={ZOOMS[zoomStep]}
+              />
+              <p className="club-hint">
+                Scroll sideways for the rest of the courts. Yours are outlined in
+                green.
+              </p>
+            </div>
+          )}
+        </>
+      )}
     </>
   );
 }

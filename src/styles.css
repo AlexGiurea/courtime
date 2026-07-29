@@ -43,6 +43,16 @@ body,
   height: 100%;
 }
 
+/* Grids are wider than phones, and they carry their own horizontal scroll. Left
+   alone, a mobile browser widens the layout viewport to fit the widest thing on
+   the page and zooms everything out to match — the coach's day nav ends up off
+   the right edge. The page never scrolls sideways; the grid inside it does. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   background: var(--wash);

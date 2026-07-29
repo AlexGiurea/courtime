@@ -1,5 +1,5 @@
 import { type TouchEvent, useEffect, useRef, useState } from "react";
-import { todayIso } from "../lib/time";
+import { addDays, todayIso, weekdayIndex } from "../lib/time";
 
 /**
  * Structural shapes for everything the pro screens read. They mirror the Convex
@@ -48,9 +48,28 @@ export type ProData = {
   membershipId: string;
   displayName: string;
   orgName: string;
+  /** The club's opening window, so the coach's grid has the same rows as the desk's. */
+  dayStartMin: number;
+  dayEndMin: number;
   courts: Court[];
   members: Member[];
 };
+
+/**
+ * The Monday of the business week a date falls in. Coaches are paid by the
+ * week the club runs, Monday through Sunday — not by a rolling seven days from
+ * whatever day you happen to be looking at.
+ */
+export function weekStart(iso: string): string {
+  const index = weekdayIndex(iso); // 0 = Sunday
+  const backToMonday = index === 0 ? 6 : index - 1;
+  return addDays(iso, -backToMonday);
+}
+
+export function weekRange(iso: string): { start: string; end: string } {
+  const start = weekStart(iso);
+  return { start, end: addDays(start, 6) };
+}
 
 export function courtNameMap(courts: Court[]): Map<string, string> {
   return new Map(courts.map((court) => [court._id, court.name]));
