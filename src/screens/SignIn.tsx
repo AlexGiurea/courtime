@@ -29,7 +29,10 @@ export default function SignIn() {
   const ensureDemo = useMutation(api.seed.ensureDemo);
   const notify = useToast();
 
-  const [mode, setMode] = useState<"signIn" | "signUp">("signIn");
+  const [mode, setMode] = useState<"signIn" | "signUp" | "reset" | "reset-code">(
+    "signIn",
+  );
+  const [code, setCode] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -47,7 +50,34 @@ export default function SignIn() {
     event.preventDefault();
     if (busy) return;
     setBusy("form");
+
     try {
+      if (mode === "reset") {
+        // The answer is deliberately identical whether or not the address is on
+        // file. An unknown email makes the server throw, and surfacing that
+        // would tell anyone who asks which of a club's staff have accounts —
+        // so it is swallowed and the screen advances either way.
+        try {
+          await signIn("password", { email: email.trim().toLowerCase(), flow: "reset" });
+        } catch {
+          /* no account, a bad address, or a send that failed — same answer */
+        }
+        notify("If that address has an account, a code is on its way.");
+        setMode("reset-code");
+        setBusy(null);
+        return;
+      }
+
+      if (mode === "reset-code") {
+        await signIn("password", {
+          email: email.trim().toLowerCase(),
+          code: code.trim(),
+          newPassword: password,
+          flow: "reset-verification",
+        });
+        return;
+      }
+
       await signIn("password", {
         email: email.trim().toLowerCase(),
         password,
@@ -58,7 +88,9 @@ export default function SignIn() {
       notify(
         mode === "signIn"
           ? "That email and password combination didn't work."
-          : cleanError(error),
+          : mode === "reset-code"
+            ? "That code didn't work — it may have expired."
+            : cleanError(error),
         "error",
       );
       setBusy(null);
@@ -121,11 +153,23 @@ export default function SignIn() {
           <ThemeToggle />
         </div>
         <div className="auth-card">
-          <h1>{mode === "signIn" ? "Sign in" : "Create your club account"}</h1>
+          <h1>
+            {mode === "signIn"
+              ? "Sign in"
+              : mode === "signUp"
+                ? "Create your club account"
+                : mode === "reset"
+                  ? "Reset your password"
+                  : "Enter your code"}
+          </h1>
           <p className="sub">
             {mode === "signIn"
               ? "Front desk and coaches use the same sign-in."
-              : "You'll set up your courts and coaches next."}
+              : mode === "signUp"
+                ? "You'll set up your courts and coaches next."
+                : mode === "reset"
+                  ? "We'll email you a six-digit code."
+                  : `Sent to ${email || "your email"}. It's good for an hour.`}
           </p>
 
           <form className="auth-form" onSubmit={onSubmit}>
@@ -156,30 +200,78 @@ export default function SignIn() {
               />
             </div>
 
-            <div className="field">
-              <label htmlFor="password">Password</label>
+            {mode === "reset-code" ? (
+              <div className="field">
+                <label htmlFor="code">Code from your email</label>
+                <input
+                  id="code"
+                  className="input tabular"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+                  required
+                />
+              </div>
+            ) : null}
+
+            <div className="field" hidden={mode === "reset"}>
+              <label htmlFor="password">
+                {mode === "reset-code" ? "New password" : "Password"}
+              </label>
               <input
                 id="password"
                 className="input"
                 type="password"
                 autoComplete={mode === "signIn" ? "current-password" : "new-password"}
+                required={mode !== "reset"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 minLength={8}
-                required
               />
-              {mode === "signUp" ? (
+              {mode === "signUp" || mode === "reset-code" ? (
                 <span className="hint">At least 8 characters.</span>
               ) : null}
             </div>
 
             <button className="btn primary lg" type="submit" disabled={busy !== null}>
               {busy === "form" ? <span className="spinner" /> : null}
-              {mode === "signIn" ? "Sign in" : "Create account"}
+              {mode === "signIn"
+                ? "Sign in"
+                : mode === "signUp"
+                  ? "Create account"
+                  : mode === "reset"
+                    ? "Email me a code"
+                    : "Set new password"}
             </button>
+
+            {mode === "signIn" ? (
+              <button
+                className="btn ghost sm"
+                type="button"
+                style={{ alignSelf: "flex-start" }}
+                onClick={() => setMode("reset")}
+              >
+                Forgot your password?
+              </button>
+            ) : null}
+            {mode === "reset" || mode === "reset-code" ? (
+              <button
+                className="btn ghost sm"
+                type="button"
+                style={{ alignSelf: "flex-start" }}
+                onClick={() => setMode("signIn")}
+              >
+                ← Back to sign in
+              </button>
+            ) : null}
           </form>
 
-          <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}>
+          <p
+            style={{ fontSize: 13, color: "var(--muted)", marginTop: 14 }}
+            hidden={mode === "reset" || mode === "reset-code"}
+          >
             {mode === "signIn" ? "New club?" : "Already have an account?"}{" "}
             <button
               className="btn ghost sm"
@@ -190,9 +282,14 @@ export default function SignIn() {
             </button>
           </p>
 
+          {mode === "reset" || mode === "reset-code" ? null : (
           <div className="divider">or explore the demo club</div>
+          )}
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: 9 }}
+            hidden={mode === "reset" || mode === "reset-code"}
+          >
             {DEMO_ACCOUNTS.map((account) => (
               <button
                 key={account.email}

@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Route, Routes, useNavigate } from "react-router-dom";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { SessionWithClub, TopBar } from "../App";
-import { Loading } from "../ui";
+import { Loading, useGuarded } from "../ui";
 import {
   addDays,
   durationLabel,
   formatDateLong,
+  formatDateMedium,
   relativeDayLabel,
   todayIso,
 } from "../lib/time";
@@ -170,6 +171,56 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
   );
 }
 
+/**
+ * A coach asked the desk for a day off, out loud, through Tempo. It has to land
+ * where a person will actually see it — so it sits on the schedule, above the
+ * day, and disappears the moment it's dealt with.
+ */
+function TimeOffStrip({ canEdit }: { canEdit: boolean }) {
+  const requests = useQuery(api.schedule.openRequests);
+  const resolve = useMutation(api.schedule.resolveRequest);
+  const guarded = useGuarded();
+
+  if (!canEdit || !requests || requests.length === 0) return null;
+
+  return (
+    <div className="timeoff-strip no-print">
+      {requests.map((request) => (
+        <div className="timeoff" key={request._id as string}>
+          <span className="dot" style={{ background: request.color }} />
+          <span className="what">
+            <b>{request.coach}</b> asked for {formatDateMedium(request.date)} off —{" "}
+            {request.span}
+            {request.reason ? ` · ${request.reason}` : ""}
+          </span>
+          <button
+            className="btn sm"
+            onClick={() =>
+              void guarded(
+                () => resolve({ requestId: request._id, status: "acknowledged" }),
+                "Noted",
+              )
+            }
+          >
+            Got it
+          </button>
+          <button
+            className="btn ghost sm"
+            onClick={() =>
+              void guarded(
+                () => resolve({ requestId: request._id, status: "declined" }),
+                "Declined",
+              )
+            }
+          >
+            Can't
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 type Face = "grid" | "clinics";
 type PageTurn = ReturnType<typeof usePageTurn<Face>>;
 
@@ -281,6 +332,8 @@ function SchedulePage({
           Print day sheet
         </button>
       </div>
+
+      <TimeOffStrip canEdit={canEdit} />
 
       <div className={`flip-stage${shown === "clinics" ? " is-clinics" : ""}`}>
         <div {...faceProps}>

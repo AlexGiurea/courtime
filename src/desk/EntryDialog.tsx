@@ -30,6 +30,7 @@ export default function EntryDialog({
 }) {
   const createEntry = useMutation(api.schedule.createEntry);
   const createSeries = useMutation(api.schedule.createSeries);
+  const cancelSeries = useMutation(api.schedule.cancelSeries);
   const updateEntry = useMutation(api.schedule.updateEntry);
   const deleteEntry = useMutation(api.schedule.deleteEntry);
   const guarded = useGuarded();
@@ -138,6 +139,29 @@ export default function EntryDialog({
           {editing ? (
             <button className="btn danger" onClick={() => void remove()} disabled={busy}>
               Cancel booking
+            </button>
+          ) : null}
+          {editing?.seriesId ? (
+            <button
+              className="btn danger"
+              disabled={busy}
+              title="Cancel this one and every later week in the run"
+              onClick={() => {
+                setBusy(true);
+                void guarded(
+                  () =>
+                    cancelSeries({
+                      seriesId: editing.seriesId as string,
+                      fromDate: date,
+                    }),
+                  "Standing lesson cancelled",
+                ).then((ok) => {
+                  setBusy(false);
+                  if (ok) onClose();
+                });
+              }}
+            >
+              Cancel the rest
             </button>
           ) : null}
           {!editing ? (

@@ -9,6 +9,29 @@ import { ShortcutTable } from "./ShortcutsOverlay";
 
 const HOUR_CHOICES = Array.from({ length: 19 }, (_, i) => (i + 5) * 60);
 
+/** Enough of the world for racquet clubs, plus whatever this browser is in. */
+const BASE_ZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Phoenix",
+  "America/Toronto",
+  "America/Mexico_City",
+  "Europe/London",
+  "Europe/Madrid",
+  "Europe/Paris",
+  "Europe/Bucharest",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Australia/Sydney",
+];
+
+const guessedZone =
+  Intl.DateTimeFormat().resolvedOptions().timeZone || "America/New_York";
+
+const ZONES = [...new Set([guessedZone, ...BASE_ZONES])];
+
 const PLANS = [
   {
     id: "free" as const,
@@ -164,6 +187,29 @@ export default function SettingsPage({ session }: { session: SessionWithClub }) 
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className="field">
+              <label htmlFor="s-zone">Time zone</label>
+              <select
+                id="s-zone"
+                className="select"
+                value={org.timeZone ?? guessedZone}
+                disabled={!isAdmin}
+                onChange={(e) =>
+                  void guarded(() => updateOrg({ timeZone: e.target.value }), "Time zone saved")
+                }
+              >
+                {ZONES.map((zone) => (
+                  <option key={zone} value={zone}>
+                    {zone.replace(/_/g, " ")}
+                  </option>
+                ))}
+              </select>
+              <span className="hint">
+                Only used for things Courtime starts on its own — the evening note to
+                coaches goes out at six here, not six in London.
+              </span>
             </div>
 
             <label style={{ display: "flex", gap: 9, alignItems: "flex-start", fontSize: 13 }}>

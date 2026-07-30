@@ -505,3 +505,84 @@ function addDaysIso(iso: string, days: number): string {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
+
+/**
+ * A coach's request for time off or a cover, as raised through Tempo. Read by
+ * the desk so the request lands somewhere a person will see it rather than in a
+ * table nobody opens.
+ */
+export const openRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    const membership = await currentMembership(ctx);
+    if (!membership || membership.role === "pro") return [];
+
+    const rows = await ctx.db
+      .query("timeOffRequests")
+      .withIndex("by_org_and_status", (q) =>
+        q.eq("orgId", membership.orgId).eq("status", "open"),
+      )
+      .take(50);
+
+    const out = [];
+    for (const row of rows) {
+      const coach = await ctx.db.get("memberships", row.membershipId);
+      out.push({
+        _id: row._id,
+        date: row.date,
+        coach: coach?.displayName ?? "A coach",
+        color: coach?.color ?? "#8b949e",
+        span:
+          row.startMin !== undefined && row.endMin !== undefined
+            ? `${formatTime(row.startMin)} – ${formatTime(row.endMin)}`
+            : "the whole day",
+        reason: row.reason ?? null,
+        createdAt: row.createdAt,
+      });
+    }
+    return out.sort((a, b) => a.date.localeCompare(b.date));
+  },
+});
+
+export const resolveRequest = mutation({
+  args: {
+    requestId: v.id("timeOffRequests"),
+    status: v.union(v.literal("acknowledged"), v.literal("declined")),
+  },
+  handler: async (ctx, args) => {
+    const membership = await requireMembership(ctx, "staff");
+    const row = await ctx.db.get("timeOffRequests", args.requestId);
+    if (!row || row.orgId !== membership.orgId) throw new Error("Unknown request");
+    await ctx.db.patch("timeOffRequests", args.requestId, { status: args.status });
+
+    // The coach asked out loud; they should hear back the same way.
+    await ctx.scheduler.runAfter(0, internal.pushNode.deliver, {
+      membershipIds: [row.membershipId],
+      title: args.status === "acknowledged" ? "Time off noted" : "Time off declined",
+      body:
+        args.status === "acknowledged"
+          ? `The desk has your request for ${row.date}.`
+          : `The desk can't cover ${row.date} — have a word with them.`,
+    });
+    return null;
+  },
+});
+
+/** Is this booking part of a standing lesson, and how much of it is still ahead? */
+export const seriesInfo = query({
+  args: { seriesId: v.string(), fromDate: v.string() },
+  handler: async (ctx, args) => {
+    const membership = await currentMembership(ctx);
+    if (!membership) return null;
+    const rows = await ctx.db
+      .query("entries")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .take(200);
+    const mine = rows.filter((row) => row.orgId === membership.orgId);
+    return {
+      total: mine.length,
+      remaining: mine.filter((row) => row.date >= args.fromDate).length,
+      lastDate: mine.map((row) => row.date).sort().slice(-1)[0] ?? null,
+    };
+  },
+});

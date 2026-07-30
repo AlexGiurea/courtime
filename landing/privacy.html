@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy — Courtime</title>
+<meta name="description" content="What Courtime stores, why, and how a club gets it back or deletes it." />
+<link rel="icon" href="favicon.svg" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("courtime-theme");
+      var dark = stored === "dark" || ((!stored || stored === "system") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav__inner">
+    <a class="wordmark" href="index.html" aria-label="Courtime — home">
+      <svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+        <rect x="1.6" y="3.6" width="22.8" height="18.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13 3.6V22.4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.6 1.9" opacity=".55"/>
+        <path d="M13 13V7.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M13 13l4.6 2.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <circle cx="13" cy="13" r="1.35" fill="currentColor"/>
+      </svg>
+      <span class="wordmark__text">Courtime</span>
+    </a>
+    <a class="btn btn--primary btn--sm" style="margin-left:auto" href="index.html">Back to the site</a>
+  </div>
+</header>
+
+<main class="legal wrap" id="main">
+  <p class="legal__kicker">Privacy</p>
+  <h1 class="legal__h1">What Courtime stores, and why.</h1>
+  <p class="legal__updated">Last updated 30 July 2026</p>
+
+  <p class="legal__lede">
+    Courtime is a schedule. Almost everything in it was already written in a club's
+    paper book — we are holding the same information, in a form that can be read on
+    a phone. This page says exactly what that is in plain language, because a club
+    handing over its members' names deserves better than eight pages of hedging.
+  </p>
+
+  <h2>What we hold</h2>
+  <ul>
+    <li>
+      <strong>The schedule itself.</strong> Courts, times, what each booking is
+      called, which coach is on it, and the notes column — as written by the club.
+    </li>
+    <li>
+      <strong>Clients, as the book names them.</strong> Names on bookings and clinic
+      sign-up sheets, plus the phone numbers and NTRP ratings a club wrote beside
+      them. These people are not our users and we never contact them.
+    </li>
+    <li>
+      <strong>Staff accounts.</strong> An email address, a name, a role, and a
+      password we never see — it is stored hashed by our authentication provider.
+    </li>
+    <li>
+      <strong>Photographs of pages</strong> a club uploads to the importer, kept so
+      a booking can always be traced back to the paper it came from.
+    </li>
+    <li>
+      <strong>Notification subscriptions</strong> for coaches who turn alerts on.
+    </li>
+  </ul>
+
+  <h2>What we don't</h2>
+  <p>
+    No payment details, no location, no analytics or advertising trackers, no
+    contact with a club's members or clients, and nothing sold or shared with
+    anyone for any purpose. There is no third-party tracking script on this site
+    or in the app.
+  </p>
+
+  <h2>Who can see it</h2>
+  <p>
+    A club's data belongs to that club. Front desk staff and directors see their own
+    club; a coach sees their own hours, and the rest of the club's day only if their
+    director has switched that on. None of this is enforced in the browser — every
+    read and every change is checked on the server against who is asking.
+  </p>
+  <p>
+    Access on our side is limited to what is needed to run and support the service,
+    and we look at a club's actual bookings only when they ask us to help with
+    something specific.
+  </p>
+
+  <h2>The AI features</h2>
+  <p>
+    Two parts of Courtime send data to OpenAI: reading a photographed page, and the
+    Tempo assistant. What goes out is the photograph or the question, plus the
+    schedule context needed to answer it. OpenAI does not use data sent through
+    their API to train their models. Nothing is sent unless a club uses those
+    features, and a club on the free tier never reaches the assistant at all.
+  </p>
+
+  <h2>Where it lives, and for how long</h2>
+  <p>
+    Data is held by Convex, our database and backend provider, on infrastructure in
+    the United States. We keep a club's data for as long as they have an account.
+    Delete the club and it goes — bookings, clients, photographs, the lot — within
+    30 days, including from backups.
+  </p>
+
+  <h2>Getting it back, or getting rid of it</h2>
+  <p>
+    Ask us and we'll send a club everything we hold for it in a plain file, or delete
+    it. Either way, within 30 days and at no cost. A person named in a club's book
+    who wants their details removed should ask the club, who can delete them
+    directly; if they'd rather come to us, we'll pass it on and follow up.
+  </p>
+
+  <h2>Children</h2>
+  <p>
+    Junior programmes mean children's names appear in a club's schedule. Those
+    entries are the club's records, entered by the club, and Courtime does not
+    create accounts for anyone under 16 or contact anyone named in a book.
+  </p>
+
+  <h2>Changes, and getting in touch</h2>
+  <p>
+    If this ever changes in a way that matters, we'll tell every club by email
+    before it takes effect rather than quietly reposting the page. Questions,
+    requests, or anything that looks wrong:
+    <a href="mailto:alex.rares.giurea@gmail.com">alex.rares.giurea@gmail.com</a>.
+  </p>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__base">
+    <span>© 2026 Courtime</span>
+    <span><a href="index.html">Home</a> · <a href="terms.html">Terms</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terms — Courtime</title>
+<meta name="description" content="The deal between Courtime and a club, in plain language." />
+<link rel="icon" href="favicon.svg" />
+<link rel="stylesheet" href="styles.css" />
+<script>
+  (function () {
+    try {
+      var stored = localStorage.getItem("courtime-theme");
+      var dark = stored === "dark" || ((!stored || stored === "system") &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+    } catch (e) {}
+  })();
+</script>
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav__inner">
+    <a class="wordmark" href="index.html" aria-label="Courtime — home">
+      <svg class="mark" width="26" height="26" viewBox="0 0 26 26" aria-hidden="true" focusable="false">
+        <rect x="1.6" y="3.6" width="22.8" height="18.8" rx="3.2" fill="none" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13 3.6V22.4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="1.6 1.9" opacity=".55"/>
+        <path d="M13 13V7.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M13 13l4.6 2.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        <circle cx="13" cy="13" r="1.35" fill="currentColor"/>
+      </svg>
+      <span class="wordmark__text">Courtime</span>
+    </a>
+    <a class="btn btn--primary btn--sm" style="margin-left:auto" href="index.html">Back to the site</a>
+  </div>
+</header>
+
+<main class="legal wrap" id="main">
+  <p class="legal__kicker">Terms</p>
+  <h1 class="legal__h1">The deal, in plain language.</h1>
+  <p class="legal__updated">Last updated 30 July 2026</p>
+
+  <p class="legal__lede">
+    Courtime is run by Alex Giurea. Using it means agreeing to what's below. It is
+    written to be read once, in full, in about two minutes.
+  </p>
+
+  <h2>What you get</h2>
+  <p>
+    A shared schedule for your club: the day grid, the clinic sheets, photo import
+    with human review, printable day sheets, and every coach on their phone. That is
+    the free tier and it stays free — not a trial. Pro adds the reporting and the
+    Tempo assistant for $19 per club each month, flat, however many coaches you
+    have. We'll give you notice before any price change and you can leave instead.
+  </p>
+
+  <h2>Your data is yours</h2>
+  <p>
+    Everything you put into Courtime belongs to your club. We don't sell it, we
+    don't train anything on it, and you can ask for all of it back or have it
+    deleted at any time — see <a href="privacy.html">Privacy</a>. Cancel whenever
+    you like; nothing is locked in and there is no contract to get out of.
+  </p>
+
+  <h2>What we ask of you</h2>
+  <ul>
+    <li>Only put people in the book that your club has a reason to hold — it is your club's record, and you are responsible for it.</li>
+    <li>Don't share staff logins outside the club, and tell us if one gets out.</li>
+    <li>Don't attack, overload or reverse-engineer the service.</li>
+  </ul>
+
+  <h2>The honest part about reliability</h2>
+  <p>
+    Courtime is early software run by one person. It will occasionally be
+    unavailable, and the photo import — which is a machine reading handwriting —
+    will sometimes get a booking wrong, which is exactly why nothing it reads is
+    published until a person confirms it.
+  </p>
+  <p>
+    <strong>So: keep your paper book while you're trying this.</strong> That's the
+    whole pilot design, and it's the honest answer to "what if it goes down." The
+    service is provided as it is, without warranties, and our liability is limited
+    to what you've paid us in the previous twelve months — which for a club on the
+    free tier is nothing, and for a club on Pro is at most $228.
+  </p>
+
+  <h2>Ending it</h2>
+  <p>
+    Stop whenever you want, from Settings or by asking. We may close an account that
+    is being used to break these terms or the law, and we'll say why. If we ever shut
+    the service down, we'll give at least 30 days' notice and a way to take your data
+    with you.
+  </p>
+
+  <h2>Getting in touch</h2>
+  <p>
+    <a href="mailto:alex.rares.giurea@gmail.com">alex.rares.giurea@gmail.com</a>. A
+    real person reads it.
+  </p>
+</main>
+
+<footer class="foot">
+  <div class="wrap foot__base">
+    <span>© 2026 Courtime</span>
+    <span><a href="index.html">Home</a> · <a href="privacy.html">Privacy</a></span>
+  </div>
+</footer>
+
+</body>
+</html>

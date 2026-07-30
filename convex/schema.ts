@@ -75,6 +75,12 @@ export default defineSchema({
     dayStartMin: v.number(),
     dayEndMin: v.number(),
     plan: v.union(v.literal("free"), v.literal("pro")),
+    /**
+     * IANA zone, e.g. "America/New_York". Everything a club reads is already in
+     * its own local dates, but anything the *server* starts — the evening
+     * digest — needs to know when evening is there rather than in UTC.
+     */
+    timeZone: v.optional(v.string()),
     prosCanSeeClub: v.boolean(),
     onboardingComplete: v.boolean(),
     isDemo: v.boolean(),

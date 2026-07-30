@@ -17,6 +17,7 @@ import type * as clients from "../clients.js";
 import type * as clinics from "../clinics.js";
 import type * as crons from "../crons.js";
 import type * as digest from "../digest.js";
+import type * as email from "../email.js";
 import type * as http from "../http.js";
 import type * as imports from "../imports.js";
 import type * as insights from "../insights.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   clinics: typeof clinics;
   crons: typeof crons;
   digest: typeof digest;
+  email: typeof email;
   http: typeof http;
   imports: typeof imports;
   insights: typeof insights;

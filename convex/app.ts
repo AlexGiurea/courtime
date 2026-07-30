@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { claimPendingInvite, currentMembership, requireMembership } from "./authz";
 import { Id } from "./_generated/dataModel";
 
@@ -192,10 +193,12 @@ export const updateOrg = mutation({
     dayStartMin: v.optional(v.number()),
     dayEndMin: v.optional(v.number()),
     prosCanSeeClub: v.optional(v.boolean()),
+    timeZone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const membership = await requireMembership(ctx, "admin");
     const patch: Record<string, unknown> = {};
+    if (args.timeZone !== undefined) patch.timeZone = args.timeZone;
     if (args.name !== undefined && args.name.trim()) patch.name = args.name.trim();
     if (args.dayStartMin !== undefined) patch.dayStartMin = args.dayStartMin;
     if (args.dayEndMin !== undefined) patch.dayEndMin = args.dayEndMin;
@@ -307,6 +310,21 @@ export const inviteMember = mutation({
       color: colorForIndex(members.length),
       active: true,
     });
+
+    // Scheduled rather than awaited: the seat exists whether or not the email
+    // gets out, and a staff list that rolled back because a mailbox bounced
+    // would be a worse failure than a missing email.
+    const org = await ctx.db.get("orgs", membership.orgId);
+    if (email) {
+      await ctx.scheduler.runAfter(0, internal.email.sendInvite, {
+        to: email,
+        coachName: displayName,
+        clubName: org?.name ?? "your club",
+        invitedBy: membership.displayName,
+        role: args.role,
+      });
+    }
+
     return { memberId: memberId as Id<"memberships"> };
   },
 });
