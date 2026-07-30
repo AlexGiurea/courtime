@@ -1,4 +1,4 @@
-import { SLOT_MIN, formatDateLong, formatSpan, formatTimeShort } from "../lib/time";
+import { SLOT_MIN, formatDateLong, formatSpan, formatTime } from "../lib/time";
 import type { Member, ScheduleEntry } from "./data";
 
 /**
@@ -31,7 +31,7 @@ const FONT = `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`;
 const PAD = 40;
 const HEADER = 96;
 const COL_HEAD = 46;
-const TIME_COL = 64;
+const TIME_COL = 84;
 const COL_W = 190;
 const ROW_H = 30;
 const FOOTER = 40;
@@ -135,7 +135,7 @@ export function drawDay(input: DayImageInput): HTMLCanvasElement {
     if (onTheHour) {
       ctx.fillStyle = MUTED;
       ctx.font = `500 12px ${FONT}`;
-      const label = formatTimeShort(min);
+      const label = formatTime(min);
       ctx.fillText(label, gridLeft - 10 - ctx.measureText(label).width, y + 14);
     }
   });

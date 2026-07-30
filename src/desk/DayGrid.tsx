@@ -248,7 +248,7 @@ export default function DayGrid({
         tabIndex={-1}
         onKeyDown={onGridKeyDown}
         style={{
-          gridTemplateColumns: `60px repeat(${courts.length}, minmax(150px, 1fr))`,
+          gridTemplateColumns: `76px repeat(${courts.length}, minmax(150px, 1fr))`,
           gridTemplateRows: `auto repeat(${slots.length}, ${ROW_HEIGHT}px)`,
         }}
       >
@@ -270,7 +270,7 @@ export default function DayGrid({
             className={`grid-time${min % 60 === 0 ? " hour" : ""}`}
             style={{ gridRow: slotIndex + 2, gridColumn: 1 }}
           >
-            {min % 60 === 0 ? formatTimeShort(min) : ""}
+            {min % 60 === 0 ? formatTime(min) : ""}
           </div>
         ))}
 

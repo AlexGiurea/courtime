@@ -19,6 +19,7 @@ import CommandPalette from "./CommandPalette";
 import ClinicsFace from "./ClinicsFace";
 import { NotesButton, NotesRail } from "./DayNotes";
 import { usePageTurn } from "./PageTurn";
+import { useFullScreen } from "./useFullScreen";
 import ShortcutsOverlay from "./ShortcutsOverlay";
 import { isBareKey, isTypingTarget } from "./shortcuts";
 import ClientsPage, { ClientProfilePage } from "./ClientsPage";
@@ -81,6 +82,13 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
       if (isBareKey(event, "p")) {
         event.preventDefault();
         window.print();
+        return;
+      }
+      if (isBareKey(event, "f")) {
+        event.preventDefault();
+        // The day bar owns the state; this is the only shortcut that has to
+        // reach across, so it goes by event rather than by lifting more state.
+        window.dispatchEvent(new CustomEvent("courtime:fullscreen"));
         return;
       }
 
@@ -221,6 +229,34 @@ function TimeOffStrip({ canEdit }: { canEdit: boolean }) {
   );
 }
 
+function ExpandIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M9.6 2.4h4v4M6.4 13.6h-4v-4M13.6 2.4 9.2 6.8M2.4 13.6 6.8 9.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function ShrinkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M13.4 6.6h-4v-4M2.6 9.4h4v4M9.4 6.6l4.2-4.2M6.6 9.4l-4.2 4.2"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 type Face = "grid" | "clinics";
 type PageTurn = ReturnType<typeof usePageTurn<Face>>;
 
@@ -254,6 +290,7 @@ function SchedulePage({
   const canEdit = session.membership.role !== "pro";
 
   const { shown, face, turnTo, faceProps } = pageTurn;
+  const fullScreen = useFullScreen();
 
   const stats = useMemo(() => {
     const entries = day?.entries ?? [];
@@ -328,6 +365,15 @@ function SchedulePage({
           open={notesOpen}
           onToggle={() => setNotesOpen((open) => !open)}
         />
+        <button
+          className="btn"
+          onClick={fullScreen.toggle}
+          aria-pressed={fullScreen.active}
+          title={fullScreen.active ? "Leave full screen  ·  Esc" : "Full screen  ·  F"}
+        >
+          {fullScreen.active ? <ShrinkIcon /> : <ExpandIcon />}
+          {fullScreen.active ? "Exit" : "Full screen"}
+        </button>
         <button className="btn" onClick={() => window.print()}>
           Print day sheet
         </button>
@@ -366,6 +412,24 @@ function SchedulePage({
         jumps to today, <kbd>Ctrl</kbd> <kbd>K</kbd> jumps to any date.{" "}
         <kbd>?</kbd> shows every shortcut.
       </p>
+
+      {fullScreen.active ? (
+        <button
+          className="fullscreen-exit no-print"
+          onClick={fullScreen.exit}
+          aria-label="Leave full screen"
+          title="Leave full screen  ·  Esc"
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path
+              d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      ) : null}
 
       {notesOpen ? (
         <NotesRail date={date} note={note} onClose={() => setNotesOpen(() => false)} />

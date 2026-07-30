@@ -24,19 +24,46 @@ await signInAs(page, "desk");
 
 const layout = await page.evaluate(() => {
   const grid = document.querySelector(".grid-wrap");
-  const hint = document.querySelector(".desk-hint");
+  const dock = document.querySelector(".agent-dock");
   return {
-    gap: hint ? Math.round(window.innerHeight - hint.getBoundingClientRect().bottom) : -1,
-    overflows: document.documentElement.scrollWidth > window.innerWidth + 2,
     grid: Boolean(grid),
+    // The grid has to stop above Tempo's launcher, or the last courts of the
+    // day sit underneath it and can't be clicked.
+    clearsDock:
+      grid && dock
+        ? grid.getBoundingClientRect().bottom <= dock.getBoundingClientRect().top
+        : null,
+    slack: grid
+      ? Math.round(window.innerHeight - grid.getBoundingClientRect().bottom)
+      : -1,
+    overflows: document.documentElement.scrollWidth > window.innerWidth + 2,
+    clock: Array.from(document.querySelectorAll(".grid-time"))
+      .map((el) => el.textContent.trim())
+      .filter(Boolean)[0],
   };
 });
 check(
-  "the grid fills the window",
-  layout.grid && layout.gap >= 0 && layout.gap < 40,
-  `${layout.gap}px below the hint line`,
+  "the grid leaves a lane for Tempo's dock",
+  layout.grid && layout.clearsDock !== false,
+  `${layout.slack}px of slack below it`,
 );
+check("hours read as a clock", /^\d{1,2}:\d{2} (AM|PM)$/.test(layout.clock ?? ""), layout.clock);
 check("the page never scrolls sideways", !layout.overflows);
+
+// Full screen, and both ways out of it.
+await pressBare(page, "KeyF");
+const fullOn = await page.evaluate(() => ({
+  on: document.documentElement.classList.contains("is-fullscreen"),
+  chromeGone: getComputedStyle(document.querySelector(".topbar")).display === "none",
+  exit: Boolean(document.querySelector(".fullscreen-exit")),
+}));
+check("F goes full screen", fullOn.on && fullOn.chromeGone && fullOn.exit);
+await page.evaluate(() => document.querySelector(".fullscreen-exit")?.click());
+await wait(1200);
+check(
+  "the X comes back out",
+  await page.evaluate(() => !document.documentElement.classList.contains("is-fullscreen")),
+);
 
 await pressBare(page, "KeyC");
 check(

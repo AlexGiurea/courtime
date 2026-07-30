@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { SLOT_MIN, formatSpan, formatTimeShort } from "../lib/time";
+import { SLOT_MIN, formatSpan, formatTime } from "../lib/time";
 import { type Member, type ScheduleEntry } from "./data";
 
 /**
@@ -21,7 +21,7 @@ export type GridColumn = {
 /** 34px is the desk's row. A phone needs the same 30 minutes to stay tappable. */
 const BASE_ROW = 34;
 const BASE_COL = 132;
-const TIME_COL = 46;
+const TIME_COL = 66;
 
 export default function ProGrid({
   columns,
@@ -89,7 +89,7 @@ export default function ProGrid({
             className={`pro-grid-time${min % 60 === 0 ? " hour" : ""}`}
             style={{ gridRow: slotIndex + 2, gridColumn: 1 }}
           >
-            {min % 60 === 0 ? formatTimeShort(min) : ""}
+            {min % 60 === 0 ? formatTime(min) : ""}
           </div>
         ))}
 

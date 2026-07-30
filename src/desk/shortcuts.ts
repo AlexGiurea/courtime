@@ -19,6 +19,7 @@ export type ShortcutAction =
   | "clinics"
   | "notes"
   | "print"
+  | "fullscreen"
   | "import"
   | "insights"
   | "settings"
@@ -55,6 +56,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { action: "clinics", keys: ["C"], label: "Clinic sheet" },
       { action: "notes", keys: ["N"], label: "Day notes" },
       { action: "print", keys: ["P"], label: "Print the day sheet" },
+      { action: "fullscreen", keys: ["F"], label: "Full screen — Esc to leave" },
     ],
   },
   {

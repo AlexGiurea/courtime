@@ -650,21 +650,18 @@
 /* The grid used to stop at `100vh - 200px` and leave a band of empty page
    under it. Now the page is a column the height of the window: the day bar and
    the hint line take what they need, the grid takes the rest. */
-/* Scoped to the schedule: only this page owns the window. Every other desk
-   page is long and scrolls normally, so the shell is only pinned when the grid
-   is the thing on screen — and no magic number for the top bar's height. */
-.shell:has(.page.schedule) {
-  height: 100vh;
-  height: 100dvh;
-  overflow: hidden;
-}
-
+/* The schedule page stops short of the bottom on purpose.
+   Tempo's dock sits in the bottom-right corner, and a grid that ran the full
+   height of the window would put its last two courts underneath the launcher —
+   so the page keeps a lane clear for it. `--dock-clear` is that lane, and it is
+   the same number the dock is positioned with. */
 .page.schedule {
+  --dock-clear: 84px;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding-bottom: 10px;
+  padding-bottom: 8px;
 }
 
 .page.schedule .flip-stage {
@@ -682,7 +679,7 @@
 .page.schedule .grid-wrap {
   flex: 1;
   min-height: 0;
-  max-height: none;
+  max-height: calc(100vh - 54px - 108px - var(--dock-clear));
 }
 
 /* The clinic sheet has no inner scroller of its own, so the face carries one.
@@ -695,6 +692,14 @@
   margin: 8px 0 0;
   font-size: 12px;
   flex: none;
+  /* Stops at the dock rather than running under it. */
+  padding-right: 200px;
+}
+
+@media (max-width: 900px) {
+  .desk-hint {
+    padding-right: 0;
+  }
 }
 
 @media print {
@@ -1046,4 +1051,50 @@
   flex: 1;
   min-width: 0;
   color: var(--ink);
+}
+
+/* ---------- full screen ---------- */
+
+/* The browser gives us the pixels; this gives them to the grid. Chrome that
+   only exists to navigate between pages goes, and the day stays. */
+html.is-fullscreen .topbar,
+html.is-fullscreen .desk-hint,
+html.is-fullscreen .agent-dock {
+  display: none;
+}
+
+html.is-fullscreen .page.schedule {
+  --dock-clear: 0px;
+  max-width: none;
+  padding: 12px 16px 8px;
+}
+
+html.is-fullscreen .page.schedule .grid-wrap {
+  max-height: calc(100vh - 84px);
+}
+
+/* Out is always one click away, in the corner the grid isn't using. */
+.fullscreen-exit {
+  position: fixed;
+  top: 12px;
+  right: 14px;
+  z-index: 60;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition:
+    color 150ms ease,
+    border-color 150ms ease;
+}
+
+.fullscreen-exit:hover {
+  color: var(--ink);
+  border-color: var(--muted);
 }
