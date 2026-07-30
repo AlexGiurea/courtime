@@ -551,7 +551,7 @@ textarea {
 
 .grid-cell.half {
   border-bottom-style: dashed;
-  border-bottom-color: #eef1f4;
+  border-bottom-color: var(--wash-deep);
 }
 
 .grid-cell.focused {
@@ -1445,4 +1445,128 @@ kbd {
   .entry.mine {
     background: #fff;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Dark.
+
+   Not an inversion. The ground is a cool near-black with a hint of the accent's
+   blue-green in it so the app still feels like one object, the paper white of a
+   card becomes a lifted slate rather than grey, and the accent is brightened
+   because #0e7a5f is unreadable on a dark ground. Every rule in this file
+   styles through the tokens, so this block is the whole theme.
+
+   `data-theme` wins over the media query in both directions: a desk that has
+   chosen light stays light on a machine set to dark, and vice versa.
+   --------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #eef2f5;
+    --ink-soft: #cdd6de;
+    --muted: #94a0ab;
+    --faint: #6f7c88;
+    --line: #232c34;
+    --line-strong: #33404a;
+    --paper: #151b21;
+    --wash: #0f1418;
+    --wash-deep: #1b2229;
+    --accent: #4cbf9c;
+    --accent-hover: #6bd4b3;
+    --accent-soft: #10312a;
+    --danger: #e8887c;
+    --danger-soft: #33201d;
+    --warn: #d7ad55;
+    --warn-soft: #2c2517;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.65);
+
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink: #eef2f5;
+  --ink-soft: #cdd6de;
+  --muted: #94a0ab;
+  --faint: #6f7c88;
+  --line: #232c34;
+  --line-strong: #33404a;
+  --paper: #151b21;
+  --wash: #0f1418;
+  --wash-deep: #1b2229;
+  --accent: #4cbf9c;
+  --accent-hover: #6bd4b3;
+  --accent-soft: #10312a;
+  --danger: #e8887c;
+  --danger-soft: #33201d;
+  --warn: #d7ad55;
+  --warn-soft: #2c2517;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.65);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+/* The one place a hard white would be wrong: text sitting on the accent. */
+:root[data-theme="dark"] .btn.primary,
+:root[data-theme="dark"] .agent-dock-mic.is-live,
+:root[data-theme="dark"] .agent-send {
+  color: #0b1113;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn.primary,
+  :root:not([data-theme="light"]) .agent-dock-mic.is-live,
+  :root:not([data-theme="light"]) .agent-send {
+    color: #0b1113;
+  }
+}
+
+/* The sign-in panel paints its own dark ground, so it needs no second one. */
+:root[data-theme="dark"] .overlay {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+/* ---------- the theme switch ---------- */
+
+.theme-toggle {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--paper);
+  color: var(--muted);
+  cursor: pointer;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+
+.auth-theme {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+.auth-main {
+  position: relative;
 }

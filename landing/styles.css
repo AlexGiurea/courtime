@@ -139,12 +139,12 @@ h1{
 #top-sentinel{position:absolute;top:0;left:0;width:1px;height:1px}
 .nav{
   position:sticky;top:0;z-index:50;
-  background:rgba(255,255,255,.86);
+  background:color-mix(in srgb, var(--paper) 86%, transparent);
   backdrop-filter:saturate(1.4) blur(10px);
   border-bottom:1px solid transparent;
   transition:border-color .25s var(--ease),background-color .25s var(--ease);
 }
-.nav.is-stuck{border-bottom-color:var(--line);background:rgba(255,255,255,.93)}
+.nav.is-stuck{border-bottom-color:var(--line);background:color-mix(in srgb, var(--paper) 94%, transparent)}
 .nav__inner{display:flex;align-items:center;gap:24px;height:66px}
 .wordmark{display:inline-flex;align-items:center;gap:9px;text-decoration:none;color:var(--ink)}
 .wordmark .mark{color:var(--accent);flex:none}
@@ -445,7 +445,7 @@ h1{
 }
 @media (min-width:820px){.trust{grid-template-columns:minmax(220px,.62fr) 1.38fr;gap:34px;align-items:start}}
 .trust__k{font-family:var(--serif);font-size:clamp(1.2rem,1.05rem + .6vw,1.5rem);color:var(--accent-deep);letter-spacing:-.015em;line-height:1.25}
-.trust__v{font-size:.97rem;color:#2f4a42;line-height:1.6}
+.trust__v{font-size:.97rem;color:var(--accent-deep);line-height:1.6}
 
 /* ─── two views ──────────────────────────────────────────── */
 .views{display:grid;gap:clamp(40px,5vw,56px);align-items:start}
@@ -746,3 +746,96 @@ kbd{
   .live__dot::after{display:none}
   .sheet__beam{opacity:0}
 }
+
+
+/* ---------------------------------------------------------------------------
+   Dark. Every rule above styles through the tokens, so this block is the whole
+   theme. The ink-ground sections keep their own dark treatment either way — in
+   dark mode they lift slightly instead of dropping, so the page still has the
+   same rhythm of light and dark bands rather than going flat.
+   --------------------------------------------------------------------------- */
+
+:root[data-theme="dark"]{
+  --ink:#eef2f5;
+  --muted:#94a0ab;
+  --line:#232c34;
+  --paper:#11161b;
+  --wash:#0c1014;
+  --accent:#4cbf9c;
+  --accent-soft:#10312a;
+
+  --body:#c2cbd3;
+  --line-soft:#1b232a;
+  --accent-deep:#7ad6b8;
+  --accent-lift:#4cbf9c;
+  --flag:#d7a545;
+  --flag-soft:#2a2317;
+  --rule:#2b3f52;
+  --graphite:#aab4be;
+
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow-md:0 2px 4px rgba(0,0,0,.4), 0 12px 28px -12px rgba(0,0,0,.7);
+  --shadow-lg:0 4px 8px rgba(0,0,0,.4), 0 28px 60px -20px rgba(0,0,0,.8);
+
+  color-scheme:dark;
+}
+
+:root[data-theme="dark"] .section--dark{background:#080b0e}
+:root[data-theme="dark"] .btn--primary{color:#08110e}
+:root[data-theme="dark"] .skip-link{color:#08110e}
+:root[data-theme="dark"] .toast{background:#1b232a;color:var(--ink)}
+
+/* ---------- the theme switch ---------- */
+
+.theme-btn{
+  flex:none;width:36px;height:36px;margin-left:auto;
+  display:grid;place-items:center;
+  border:1px solid var(--line);border-radius:9px;
+  background:transparent;color:var(--muted);cursor:pointer;
+  transition:color .18s var(--ease),border-color .18s var(--ease);
+}
+
+.nav__links + .theme-btn{margin-left:auto}
+.theme-btn + .btn{margin-left:10px}
+
+.theme-btn:hover{color:var(--accent);border-color:var(--accent)}
+.theme-btn__moon{display:none}
+
+:root[data-theme="dark"] .theme-btn__sun{display:none}
+:root[data-theme="dark"] .theme-btn__moon{display:block}
+
+@media (max-width:640px){
+  .theme-btn{width:32px;height:32px}
+}
+
+/* Anything that paints itself on the ink token inverts with the theme, which on
+   a dark ground means white text on white. Pin those bands to a real dark. */
+:root[data-theme="dark"] .cta{background:#080b0e;color:#f2f5f7}
+:root[data-theme="dark"] .cta__h{color:#f2f5f7}
+:root[data-theme="dark"] .facts,
+:root[data-theme="dark"] .foot,
+:root[data-theme="dark"] .section--dark{background:#080b0e}
+
+/* The day-sheet mock is a picture of a printed page, so it stays paper — the
+   same call as the exported PNG. A printout doesn't have a dark mode. */
+:root[data-theme="dark"] .sheetprint{
+  background:#ffffff;
+  color:#101418;
+  border-color:#cfd6dd;
+}
+:root[data-theme="dark"] .sheetprint *{
+  --ink:#101418;
+  --muted:#5b6570;
+  --line:#e3e7ec;
+  --paper:#ffffff;
+  --accent-deep:#0a5c47;
+  color:inherit;
+}
+:root[data-theme="dark"] .sheetprint__table th,
+:root[data-theme="dark"] .sheetprint__table td{
+  border-color:#e3e7ec;
+  color:#101418;
+}
+:root[data-theme="dark"] .sheetprint__table td:first-child{color:#5b6570}
+:root[data-theme="dark"] .sheetprint__table tbody tr:nth-child(2n) td{background:#fbfcfd}
+:root[data-theme="dark"] .sheetprint__table em{color:#0a5c47}

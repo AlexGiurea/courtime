@@ -1,5 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import ThemeToggle from "../ThemeToggle";
+
 import { useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { BrandMark, cleanError, useToast } from "../ui";
@@ -115,6 +117,9 @@ export default function SignIn() {
       </aside>
 
       <main className="auth-main">
+        <div className="auth-theme">
+          <ThemeToggle />
+        </div>
         <div className="auth-card">
           <h1>{mode === "signIn" ? "Sign in" : "Create your club account"}</h1>
           <p className="sub">

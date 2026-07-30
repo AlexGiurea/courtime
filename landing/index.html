@@ -9,6 +9,16 @@
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
 <script>document.documentElement.className += ' js';</script>
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem("courtime-theme");
+        var dark = stored === "dark" || ((!stored || stored === "system") &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      } catch (e) {}
+    })();
+  </script>
 </head>
 <body>
 <a class="skip-link" href="#main">Skip to content</a>
@@ -35,6 +45,15 @@
       <a href="#faq">FAQ</a>
     </nav>
 
+    <button class="theme-btn" id="theme-btn" type="button" aria-label="Switch theme" title="Switch theme">
+      <svg class="theme-btn__sun" width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <circle cx="10" cy="10" r="3.6" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10 1.8v2.1M10 16.1v2.1M18.2 10h-2.1M3.9 10H1.8M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5M15.8 15.8l-1.5-1.5M5.7 5.7 4.2 4.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <svg class="theme-btn__moon" width="17" height="17" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M16.3 12.6A7 7 0 0 1 7.4 3.7a7 7 0 1 0 8.9 8.9Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      </svg>
+    </button>
     <a class="btn btn--primary btn--sm" href="https://courtime.vercel.app" data-cta="demo-nav">See the live demo</a>
   </div>
 </header>

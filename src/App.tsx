@@ -17,6 +17,7 @@ import ProApp from "./pro/ProApp";
 import AgentDock from "./agent/AgentDock";
 import { isCoachApp } from "./face";
 import { Avatar, BrandMark, Loading } from "./ui";
+import ThemeToggle from "./ThemeToggle";
 
 export type Session = Extract<
   FunctionReturnType<typeof api.app.session>,
@@ -162,6 +163,7 @@ export function TopBar({
 
       <div className="topbar-right">
         {children}
+        <ThemeToggle />
         {deskAllowed ? (
           <Link className="btn ghost sm view-switch" to={onCoachSide ? "/desk" : "/me"}>
             {onCoachSide ? "Back to the front desk" : "View as coach"}

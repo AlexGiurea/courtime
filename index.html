@@ -15,6 +15,23 @@
     <meta name="apple-mobile-web-app-title" content="Courtime" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Courtime — the club's paper schedule book, on every phone</title>
+    <script>
+      // Runs before the first paint so a desk on dark never gets a white flash.
+      (function () {
+        try {
+          var stored = localStorage.getItem("courtime-theme");
+          var dark =
+            stored === "dark" ||
+            ((!stored || stored === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+          if (dark) {
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", "#0f1418");
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

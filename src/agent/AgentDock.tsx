@@ -262,13 +262,7 @@ export default function AgentDock() {
             <Tempo size={34} state={tempoState} />
             <span className="who">
               <strong>Tempo</strong>
-              <span className="role">
-                {voice.active
-                  ? "On a call"
-                  : canWrite
-                    ? "Reads and changes the schedule"
-                    : "Reads your schedule"}
-              </span>
+              {voice.active ? <span className="role">On a call</span> : null}
             </span>
 
             {availability.voice && !voice.active ? (
@@ -340,11 +334,6 @@ export default function AgentDock() {
                     </button>
                   ))}
                 </div>
-                {availability.voice ? (
-                  <p className="agent-empty-voice">
-                    Or press <kbd>V</kbd> and say it out loud.
-                  </p>
-                ) : null}
               </div>
             ) : (
               messages.map((message, index) => {

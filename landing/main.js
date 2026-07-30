@@ -159,3 +159,27 @@
     }, { threshold: 0.35 }).observe(root);
   })();
 })();
+
+/* ---------- theme ----------
+   Shares the same localStorage key as the app, so a club that has set the app
+   to dark finds the marketing site already dark on the same browser. */
+(function () {
+  var button = document.getElementById("theme-btn");
+  if (!button) return;
+
+  function current() {
+    return document.documentElement.getAttribute("data-theme") === "dark"
+      ? "dark"
+      : "light";
+  }
+
+  button.addEventListener("click", function () {
+    var next = current() === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try {
+      localStorage.setItem("courtime-theme", next);
+    } catch (e) {
+      /* storage disabled — the choice still holds for this visit */
+    }
+  });
+})();
