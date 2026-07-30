@@ -788,3 +788,228 @@
     display: none;
   }
 }
+
+/* ---------- clients ---------- */
+
+.client-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.client-list li + li {
+  border-top: 1px solid var(--line);
+}
+
+.client-list a {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.client-list a:hover {
+  background: var(--wash);
+}
+
+.client-name {
+  font-weight: 600;
+}
+
+.client-meta {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.client-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.client-stats div {
+  background: var(--paper);
+  padding: 14px 16px;
+}
+
+.client-stats b {
+  display: block;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  margin-bottom: 2px;
+}
+
+.client-stats span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The relationship line — the one number no other system a club owns can
+   produce, because it comes off the asterisk on the paper page. */
+.client-bond {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.client-bond h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+}
+
+.client-bond p {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.client-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.client-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.client-sessions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.client-sessions li {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  align-items: baseline;
+  gap: 12px;
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+.client-sessions li + li {
+  border-top: 1px solid var(--line);
+}
+
+.client-sessions .when {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.client-sessions .who {
+  color: var(--faint);
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.client-sessions .req {
+  color: var(--warn);
+  margin-left: 5px;
+}
+
+@media (max-width: 620px) {
+  .client-sessions li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .client-sessions .who {
+    text-align: left;
+  }
+}
+
+.cap-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.cap-input {
+  width: 58px;
+  padding: 4px 6px;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* A name below the line still belongs on the sheet — it is just next in. */
+.roster-row.waitlisted {
+  opacity: 0.72;
+}
+
+.roster-row.waitlisted .roster-index::after {
+  content: "W";
+  margin-left: 2px;
+  font-size: 9px;
+  color: var(--warn);
+  vertical-align: super;
+}
+
+.tag.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* Standing lessons are a real need and a rare one, so the control is a
+   checkbox in the footer rather than a mode the dialog opens in. */
+.repeat-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.repeat-field input {
+  accent-color: var(--accent);
+}
+
+.repeat-weeks {
+  width: auto;
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+.rate-field {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.rate-input {
+  width: 70px;
+  padding: 4px 6px;
+  font-size: 12px;
+  text-align: right;
+}
+
+.pay-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.3;
+}
+
+.pay-cell .sub {
+  font-size: 11.5px;
+  color: var(--muted);
+}

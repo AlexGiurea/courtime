@@ -20,6 +20,7 @@ import { NotesButton, NotesRail } from "./DayNotes";
 import { usePageTurn } from "./PageTurn";
 import ShortcutsOverlay from "./ShortcutsOverlay";
 import { isBareKey, isTypingTarget } from "./shortcuts";
+import ClientsPage, { ClientProfilePage } from "./ClientsPage";
 import ImportPage from "./ImportPage";
 import ReviewPage from "./ReviewPage";
 import SettingsPage from "./SettingsPage";
@@ -87,6 +88,7 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
       if (isBareKey(event, "i")) return navigate("/desk/import");
       if (isBareKey(event, "r")) return navigate("/desk/insights");
       if (isBareKey(event, "s")) return navigate("/desk/settings");
+      if (isBareKey(event, "l")) return navigate("/desk/clients");
     }
 
     window.addEventListener("keydown", onKey);
@@ -131,6 +133,11 @@ export default function DeskApp({ session }: { session: SessionWithClub }) {
         <Route path="import" element={<ImportPage session={session} />} />
         <Route path="import/:batchId" element={<ImportPage session={session} />} />
         <Route path="review/:pageId" element={<ReviewPage session={session} />} />
+        <Route path="clients" element={<ClientsPage session={session} />} />
+        <Route
+          path="clients/:clientId"
+          element={<ClientProfilePage session={session} />}
+        />
         <Route path="settings" element={<SettingsPage session={session} />} />
         <Route path="insights" element={<InsightsPage session={session} />} />
       </Routes>

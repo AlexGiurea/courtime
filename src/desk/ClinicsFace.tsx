@@ -134,6 +134,7 @@ function ClinicCard({
       startMin?: number;
       endMin?: number;
       participants?: Participant[];
+      capacity?: number | null;
     }) =>
       void guarded(async () => {
         await save({
@@ -144,6 +145,7 @@ function ClinicCard({
           endMin: "endMin" in patch ? patch.endMin : endMin,
           entryId: roster.entryId,
           participants: patch.participants ?? roster.participants,
+          capacity: "capacity" in patch ? patch.capacity : (roster.capacity ?? null),
         });
         return true;
       }),
@@ -158,6 +160,12 @@ function ClinicCard({
   const courtName = new Map(
     session.courts.map((court) => [court._id as string, court.name]),
   );
+
+  // Where the line falls on the sheet. The server redraws it on every save, so
+  // raising the cap promotes the right people in written-down order.
+  const signedUp = roster.participants.filter((p) => !p.waitlisted).length;
+  const waiting = roster.participants.filter((p) => p.waitlisted).length;
+  const full = roster.capacity !== undefined && signedUp >= roster.capacity;
 
   const spanLabel =
     startMin !== undefined && endMin !== undefined
@@ -193,16 +201,37 @@ function ClinicCard({
             <span className="tabular">{spanLabel}</span>
             {roster.court ? <span className="tag">{roster.court}</span> : null}
             {roster.coach ? <span className="tag accent">{roster.coach}</span> : null}
-            <span className="tag">
+            <span className={`tag${full ? " warn" : ""}`}>
               {roster.participants.length === 0
                 ? "No names yet"
-                : `${roster.participants.length} signed up`}
+                : roster.capacity
+                  ? `${signedUp} of ${roster.capacity}${waiting ? ` · ${waiting} waiting` : ""}`
+                  : `${roster.participants.length} signed up`}
             </span>
           </div>
         </div>
 
         {canEdit ? (
           <div className="times">
+            {/* Quiet on purpose: most clinics never need a cap, and the ones
+                that do only need it set once. */}
+            <label className="cap-field">
+              Cap
+              <input
+                className="input cap-input"
+                type="number"
+                min={1}
+                max={60}
+                placeholder="—"
+                defaultValue={roster.capacity ?? ""}
+                aria-label="How many this clinic takes"
+                onBlur={(event) => {
+                  const raw = event.target.value.trim();
+                  const next = raw === "" ? null : Number(raw);
+                  if (next !== (roster.capacity ?? null)) persist({ capacity: next });
+                }}
+              />
+            </label>
             <select
               className="select"
               aria-label="Clinic start"

@@ -85,6 +85,7 @@ export const session = query({
           role: m.role,
           color: m.color,
           claimed: m.userId !== undefined,
+          rateCents: m.rateCents ?? null,
         })),
     };
   },
@@ -330,6 +331,29 @@ export const updateMember = mutation({
         : {}),
       ...(args.role !== undefined ? { role: args.role } : {}),
       ...(args.active !== undefined ? { active: args.active } : {}),
+    });
+    return null;
+  },
+});
+
+/**
+ * What the club pays a coach an hour, in cents. Nothing is hard-coded and
+ * nothing is assumed: a coach with no rate on file shows as "not set" in the
+ * payroll view rather than as zero, because zero is a number a club might
+ * believe.
+ */
+export const setMemberRate = mutation({
+  args: {
+    membershipId: v.id("memberships"),
+    rateCents: v.union(v.number(), v.null()),
+  },
+  handler: async (ctx, args) => {
+    const membership = await requireMembership(ctx, "admin");
+    const target = await ctx.db.get("memberships", args.membershipId);
+    if (!target || target.orgId !== membership.orgId) throw new Error("Unknown member");
+    await ctx.db.patch("memberships", args.membershipId, {
+      rateCents:
+        args.rateCents === null ? undefined : Math.max(0, Math.round(args.rateCents)),
     });
     return null;
   },

@@ -22,6 +22,7 @@ export type ShortcutAction =
   | "import"
   | "insights"
   | "settings"
+  | "clients"
   | "help";
 
 export type Shortcut = {
@@ -61,6 +62,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     items: [
       { action: "import", keys: ["I"], label: "Import photos", deskOnly: true },
       { action: "insights", keys: ["R"], label: "Insights and reports", deskOnly: true },
+      { action: "clients", keys: ["L"], label: "Clients", deskOnly: true },
       { action: "settings", keys: ["S"], label: "Settings", deskOnly: true },
     ],
   },

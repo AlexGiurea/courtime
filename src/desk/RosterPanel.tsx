@@ -97,8 +97,12 @@ export function RosterBody({
       ) : null}
 
       {rows.map((row, index) => (
-        <div className="roster-row" key={index}>
-          <span className="n">{index + 1}</span>
+        <div
+          className={`roster-row${row.waitlisted ? " waitlisted" : ""}`}
+          key={index}
+          title={row.waitlisted ? "On the waitlist — next in if someone drops" : undefined}
+        >
+          <span className="n roster-index">{index + 1}</span>
           {canEdit ? (
             <>
               <input

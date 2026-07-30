@@ -271,6 +271,53 @@ export default defineSchema({
     .index("by_org", ["orgId"]),
 
   /**
+   * A person the club teaches — not a user, and never one. They exist because
+   * their name is written on a paper page, so identity here is derived rather
+   * than registered.
+   */
+  clients: defineTable({
+    orgId: v.id("orgs"),
+    displayName: v.string(),
+    /** Every spelling the book has used: "P. Nguyen", "Nguyen", "Phuong Nguyen". */
+    aliases: v.array(v.string()),
+    /** Lowercased surname + first initial. The key the resolver matches on. */
+    matchKey: v.string(),
+    phone: v.optional(v.string()),
+    rating: v.optional(v.string()),
+    note: v.optional(v.string()),
+    /** Set when two records turn out to be the same person. */
+    mergedInto: v.optional(v.id("clients")),
+    createdAt: v.number(),
+  })
+    .index("by_org", ["orgId"])
+    .index("by_org_and_key", ["orgId", "matchKey"]),
+
+  /**
+   * The edge, and the whole design.
+   *
+   * A booking's label is never rewritten — the link sits beside it. That keeps
+   * the paper record exactly as the desk wrote it, makes a wrong guess one row
+   * to delete rather than a corrupted booking, and turns "everything about this
+   * client" into an indexed read instead of a text search.
+   */
+  clientLinks: defineTable({
+    orgId: v.id("orgs"),
+    clientId: v.id("clients"),
+    entryId: v.optional(v.id("entries")),
+    rosterId: v.optional(v.id("clinicRosters")),
+    date: v.string(),
+    source: v.union(
+      v.literal("roster"),
+      v.literal("matched"),
+      v.literal("manual"),
+    ),
+    confidence: v.union(v.literal("high"), v.literal("low")),
+  })
+    .index("by_client", ["clientId"])
+    .index("by_entry", ["entryId"])
+    .index("by_org_and_date", ["orgId", "date"]),
+
+  /**
    * The rotating line on the Insights page. Generated once per club per day and
    * cached — the whole point is that it costs about a hundredth of a cent, so
    * regenerating it on every page load would be the only way to get that wrong.

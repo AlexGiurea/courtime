@@ -6,6 +6,11 @@ import { Loading, useGuarded, useToast } from "../ui";
 import { addDays, formatDateMedium, todayIso } from "../lib/time";
 import InsightTicker from "./InsightTicker";
 
+/** Whole dollars: a club reading a payroll figure doesn't want cents. */
+function money(cents: number): string {
+  return `$${(cents / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+}
+
 const PERIODS = [
   { id: "7", label: "Last 7 days", days: 7 },
   { id: "30", label: "Last 30 days", days: 30 },
@@ -61,12 +66,21 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
     }
 
     const proRows = [...byPro.entries()]
-      .map(([id, value]) => ({
-        id,
-        name: memberById.get(id)?.displayName ?? "Former staff",
-        color: memberById.get(id)?.color ?? "#8b949e",
-        ...value,
-      }))
+      .map(([id, value]) => {
+        const member = memberById.get(id);
+        // No rate on file means no number — a club should never be shown a
+        // total that quietly treated a missing rate as zero.
+        const rateCents = member?.rateCents ?? null;
+        return {
+          id,
+          name: member?.displayName ?? "Former staff",
+          color: member?.color ?? "#8b949e",
+          rateCents,
+          payCents:
+            rateCents === null ? null : Math.round((value.minutes / 60) * rateCents),
+          ...value,
+        };
+      })
       .sort((a, b) => b.minutes - a.minutes);
 
     const courtRows = session.courts.map((court) => ({
@@ -84,6 +98,8 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
     return {
       entries,
       proRows,
+      payCents: proRows.reduce((sum, row) => sum + (row.payCents ?? 0), 0),
+      missingRates: proRows.filter((row) => row.rateCents === null).length,
       courtRows,
       busiestCourt,
       hourRows,
@@ -93,13 +109,17 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
   }, [data, memberById, session.courts]);
 
   function exportCsv() {
-    const lines = [["Coach", "Sessions", "Hours", "Period start", "Period end"].join(",")];
+    const lines = [
+      ["Coach", "Sessions", "Hours", "Rate/h", "Pay", "Period start", "Period end"].join(","),
+    ];
     for (const row of summary.proRows) {
       lines.push(
         [
           `"${row.name.replace(/"/g, '""')}"`,
           row.sessions,
           hours(row.minutes),
+          row.rateCents === null ? "" : (row.rateCents / 100).toFixed(2),
+          row.payCents === null ? "" : (row.payCents / 100).toFixed(2),
           startDate,
           today,
         ].join(","),
@@ -203,7 +223,15 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
           <div className="card-head">
             <div>
               <h2>Coach hours</h2>
-              <p>What each coach actually taught over the period — the payroll view.</p>
+              <p>
+                What each coach actually taught over the period — the payroll view.
+                {summary.payCents > 0
+                  ? ` Wages for the period: ${money(summary.payCents)}.`
+                  : ""}
+                {summary.missingRates > 0
+                  ? ` ${summary.missingRates} ${summary.missingRates === 1 ? "coach has" : "coaches have"} no rate set in Settings.`
+                  : ""}
+              </p>
             </div>
           </div>
           {summary.proRows.length ? (
@@ -223,8 +251,11 @@ export default function InsightsPage({ session }: { session: SessionWithClub }) 
                     <span className="title">{row.name}</span>
                     <span className="sub">{row.sessions} sessions</span>
                   </span>
-                  <span className="tabular" style={{ fontWeight: 600 }}>
-                    {hours(row.minutes)} h
+                  <span className="pay-cell tabular">
+                    <span style={{ fontWeight: 600 }}>{hours(row.minutes)} h</span>
+                    <span className="sub">
+                      {row.payCents === null ? "no rate set" : money(row.payCents)}
+                    </span>
                   </span>
                 </div>
               ))}

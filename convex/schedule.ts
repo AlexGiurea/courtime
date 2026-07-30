@@ -4,6 +4,7 @@ import { internal } from "./_generated/api";
 import { Doc, Id } from "./_generated/dataModel";
 import { MutationCtx, mutation, query } from "./_generated/server";
 import { currentMembership, requireMembership } from "./authz";
+import { linkEntry, unlinkEntry } from "./clients";
 
 export const SLOT_MIN = 30;
 
@@ -248,6 +249,11 @@ export const createEntry = mutation({
       updatedAt: Date.now(),
     });
 
+    // Whoever is named on the booking gets a profile entry, right now — the
+    // label itself is left exactly as the desk typed it.
+    const created = await ctx.db.get("entries", entryId);
+    if (created) await linkEntry(ctx, created);
+
     await recordChange(ctx, {
       orgId: membership.orgId,
       entryId,
@@ -322,6 +328,9 @@ export const updateEntry = mutation({
       updatedAt: Date.now(),
     });
 
+    const updated = await ctx.db.get("entries", args.entryId);
+    if (updated) await linkEntry(ctx, updated);
+
     const label = args.label?.trim() || entry.label;
     const affected = new Set<Id<"memberships">>();
     if (entry.proMembershipId) affected.add(entry.proMembershipId);
@@ -369,6 +378,7 @@ export const deleteEntry = mutation({
     if (!entry || entry.orgId !== membership.orgId) throw new Error("Unknown booking");
     const court = await ctx.db.get("courts", entry.courtId);
 
+    await unlinkEntry(ctx, args.entryId);
     await ctx.db.delete("entries", args.entryId);
     await recordChange(ctx, {
       orgId: membership.orgId,
@@ -380,3 +390,118 @@ export const deleteEntry = mutation({
     return null;
   },
 });
+
+/**
+ * A standing lesson: the same booking every week.
+ *
+ * Weeks that clash are skipped and reported rather than forced — a booking that
+ * quietly overwrote someone else's court would be worse than no feature at all.
+ * Every one carries the same `seriesId`, so cancelling the rest of them later is
+ * one indexed read instead of a hunt through the calendar.
+ */
+export const createSeries = mutation({
+  args: {
+    courtId: v.id("courts"),
+    startDate: v.string(),
+    weeks: v.number(),
+    startMin: v.number(),
+    endMin: v.number(),
+    label: v.string(),
+    proMembershipId: v.optional(v.id("memberships")),
+    sessionType: v.optional(v.string()),
+    requested: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const membership = await requireMembership(ctx, "staff");
+    const court = await ctx.db.get("courts", args.courtId);
+    if (!court || court.orgId !== membership.orgId) throw new Error("Unknown court");
+
+    const startMin = snap(args.startMin);
+    const endMin = snap(args.endMin);
+    assertValidSpan(startMin, endMin);
+
+    const label = args.label.trim() || "Booking";
+    const weeks = Math.max(2, Math.min(52, Math.round(args.weeks)));
+    const seriesId = `series_${Date.now()}_${Math.round(Math.random() * 1e6)}`;
+
+    const booked: string[] = [];
+    const skipped: string[] = [];
+
+    for (let week = 0; week < weeks; week += 1) {
+      const date = addDaysIso(args.startDate, week * 7);
+      const sameDay = await ctx.db
+        .query("entries")
+        .withIndex("by_org_and_date", (q) =>
+          q.eq("orgId", membership.orgId).eq("date", date),
+        )
+        .take(500);
+      const clash = sameDay.some(
+        (entry) =>
+          entry.courtId === args.courtId &&
+          startMin < entry.endMin &&
+          endMin > entry.startMin,
+      );
+      if (clash) {
+        skipped.push(date);
+        continue;
+      }
+
+      const entryId = await ctx.db.insert("entries", {
+        orgId: membership.orgId,
+        courtId: args.courtId,
+        date,
+        startMin,
+        endMin,
+        label,
+        proMembershipId: args.proMembershipId,
+        sessionType: args.sessionType,
+        requested: args.requested,
+        source: "manual",
+        seriesId,
+        updatedAt: Date.now(),
+      });
+      const created = await ctx.db.get("entries", entryId);
+      if (created) await linkEntry(ctx, created);
+      booked.push(date);
+    }
+
+    if (booked.length) {
+      await recordChange(ctx, {
+        orgId: membership.orgId,
+        changeType: "created",
+        date: booked[0],
+        summary: `${label} added weekly — ${court.name}, ${formatTime(startMin)}, ${booked.length} weeks`,
+        affectedMembershipIds: args.proMembershipId ? [args.proMembershipId] : [],
+      });
+    }
+
+    return { seriesId, booked, skipped };
+  },
+});
+
+/** Cancel the whole standing lesson from a date forward. */
+export const cancelSeries = mutation({
+  args: { seriesId: v.string(), fromDate: v.string() },
+  handler: async (ctx, args) => {
+    const membership = await requireMembership(ctx, "staff");
+    const rows = await ctx.db
+      .query("entries")
+      .withIndex("by_series", (q) => q.eq("seriesId", args.seriesId))
+      .take(200);
+
+    let removed = 0;
+    for (const entry of rows) {
+      if (entry.orgId !== membership.orgId || entry.date < args.fromDate) continue;
+      await unlinkEntry(ctx, entry._id);
+      await ctx.db.delete("entries", entry._id);
+      removed += 1;
+    }
+    return { removed };
+  },
+});
+
+function addDaysIso(iso: string, days: number): string {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}

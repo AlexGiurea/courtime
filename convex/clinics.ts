@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { QueryCtx, mutation, query } from "./_generated/server";
 import { currentMembership, requireMembership } from "./authz";
+import { linkRoster } from "./clients";
 import { clinicParticipantValidator } from "./schema";
 
 /**
@@ -103,14 +104,27 @@ export const save = mutation({
     endMin: v.optional(v.number()),
     entryId: v.optional(v.id("entries")),
     participants: v.array(clinicParticipantValidator),
+    capacity: v.optional(v.union(v.number(), v.null())),
   },
   handler: async (ctx, args) => {
     const membership = await requireMembership(ctx, "staff");
     const title = args.title.trim() || "Clinic";
-    const participants = args.participants
+    const capacity =
+      args.capacity === null || args.capacity === undefined
+        ? undefined
+        : Math.max(1, Math.round(args.capacity));
+
+    // The line is redrawn here on every save, so a club that raises the cap
+    // promotes the right people off the waitlist without anyone reordering the
+    // sheet by hand — first written down is first in, exactly like the paper.
+    const cleaned = args.participants
       .filter((p) => p.name.trim())
-      .slice(0, 40)
+      .slice(0, 60)
       .map((p) => ({ ...p, name: p.name.trim() }));
+    const participants = cleaned.map((person, index) => ({
+      ...person,
+      waitlisted: capacity !== undefined && index >= capacity ? true : undefined,
+    }));
 
     if (args.rosterId) {
       const existing = await ctx.db.get("clinicRosters", args.rosterId);
@@ -123,8 +137,11 @@ export const save = mutation({
         endMin: args.endMin,
         entryId: args.entryId,
         participants,
+        capacity,
         updatedAt: Date.now(),
       });
+      const saved = await ctx.db.get("clinicRosters", args.rosterId);
+      if (saved) await linkRoster(ctx, saved);
       return { rosterId: args.rosterId };
     }
 
@@ -136,8 +153,11 @@ export const save = mutation({
       endMin: args.endMin,
       entryId: args.entryId,
       participants,
+      capacity,
       updatedAt: Date.now(),
     });
+    const created = await ctx.db.get("clinicRosters", rosterId);
+    if (created) await linkRoster(ctx, created);
     return { rosterId };
   },
 });

@@ -40,6 +40,7 @@ export default function SettingsPage({ session }: { session: SessionWithClub }) 
   const updateOrg = useMutation(api.app.updateOrg);
   const upsertCourt = useMutation(api.app.upsertCourt);
   const inviteMember = useMutation(api.app.inviteMember);
+  const setMemberRate = useMutation(api.app.setMemberRate);
   const updateMember = useMutation(api.app.updateMember);
   const guarded = useGuarded();
 
@@ -297,6 +298,37 @@ export default function SettingsPage({ session }: { session: SessionWithClub }) 
                     {member.claimed ? "" : " · invited"}
                   </span>
                 </span>
+                {isAdmin && member.role === "pro" ? (
+                  <label className="rate-field" title="What the club pays this coach an hour">
+                    <span>$</span>
+                    <input
+                      className="input rate-input"
+                      type="number"
+                      min={0}
+                      step="0.5"
+                      placeholder="—"
+                      defaultValue={
+                        member.rateCents !== null ? (member.rateCents / 100).toFixed(2) : ""
+                      }
+                      aria-label={`Hourly rate for ${member.displayName}`}
+                      onBlur={(event) => {
+                        const raw = event.target.value.trim();
+                        const next = raw === "" ? null : Math.round(Number(raw) * 100);
+                        if (next !== member.rateCents) {
+                          void guarded(
+                            () =>
+                              setMemberRate({
+                                membershipId: member._id as Id<"memberships">,
+                                rateCents: next,
+                              }),
+                            "Rate saved",
+                          );
+                        }
+                      }}
+                    />
+                    <span className="per">/h</span>
+                  </label>
+                ) : null}
                 {isAdmin && member._id !== membership._id ? (
                   <select
                     className="select"

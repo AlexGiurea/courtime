@@ -139,6 +139,12 @@ export function TopBar({
               Import
             </NavLink>
             <NavLink
+              to="/desk/clients"
+              className={({ isActive }) => (isActive ? "active" : "")}
+            >
+              Clients
+            </NavLink>
+            <NavLink
               to="/desk/insights"
               className={({ isActive }) => (isActive ? "active" : "")}
             >

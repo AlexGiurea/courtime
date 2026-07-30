@@ -29,6 +29,7 @@ export default function EntryDialog({
   onClose: () => void;
 }) {
   const createEntry = useMutation(api.schedule.createEntry);
+  const createSeries = useMutation(api.schedule.createSeries);
   const updateEntry = useMutation(api.schedule.updateEntry);
   const deleteEntry = useMutation(api.schedule.deleteEntry);
   const guarded = useGuarded();
@@ -47,6 +48,8 @@ export default function EntryDialog({
   const [notes, setNotes] = useState(editing?.notes ?? "");
   const [requested, setRequested] = useState(Boolean(editing?.requested));
   const [busy, setBusy] = useState(false);
+  /** 1 means "just this one" — the ordinary case, and the default. */
+  const [repeatWeeks, setRepeatWeeks] = useState(1);
 
   const canEdit = session.membership.role !== "pro";
 
@@ -60,6 +63,28 @@ export default function EntryDialog({
 
   async function save() {
     if (!label.trim()) return;
+    // A standing lesson goes through its own mutation so the whole run shares a
+    // series id and clashing weeks are skipped rather than forced.
+    if (!editing && repeatWeeks > 1) {
+      setBusy(true);
+      const done = await guarded(async () => {
+        const result = await createSeries({
+          courtId,
+          startDate: date,
+          weeks: repeatWeeks,
+          startMin,
+          endMin,
+          label: label.trim(),
+          proMembershipId: proId ? (proId as Id<"memberships">) : undefined,
+          sessionType,
+          requested: requested || undefined,
+        });
+        return result;
+      }, `Booked ${repeatWeeks} weeks`);
+      setBusy(false);
+      if (done) onClose();
+      return;
+    }
     setBusy(true);
     const ok = await guarded(async () => {
       if (editing) {
@@ -114,6 +139,30 @@ export default function EntryDialog({
             <button className="btn danger" onClick={() => void remove()} disabled={busy}>
               Cancel booking
             </button>
+          ) : null}
+          {!editing ? (
+            <label className="repeat-field" title="Book this same slot every week">
+              <input
+                type="checkbox"
+                checked={repeatWeeks > 1}
+                onChange={(event) => setRepeatWeeks(event.target.checked ? 8 : 1)}
+              />
+              Weekly
+              {repeatWeeks > 1 ? (
+                <select
+                  className="select repeat-weeks"
+                  value={repeatWeeks}
+                  aria-label="How many weeks"
+                  onChange={(event) => setRepeatWeeks(Number(event.target.value))}
+                >
+                  {[4, 8, 12, 26, 52].map((n) => (
+                    <option key={n} value={n}>
+                      {n} weeks
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </label>
           ) : null}
           <span className="spacer" />
           <button className="btn" onClick={onClose} disabled={busy}>
