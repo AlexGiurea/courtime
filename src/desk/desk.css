@@ -1073,28 +1073,7 @@ html.is-fullscreen .page.schedule .grid-wrap {
   max-height: calc(100vh - 84px);
 }
 
-/* Out is always one click away, in the corner the grid isn't using. */
-.fullscreen-exit {
-  position: fixed;
-  top: 12px;
-  right: 14px;
-  z-index: 60;
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border: 1px solid var(--line-strong);
-  border-radius: 9px;
-  background: var(--paper);
-  color: var(--muted);
-  cursor: pointer;
-  box-shadow: var(--shadow-md);
-  transition:
-    color 150ms ease,
-    border-color 150ms ease;
-}
-
-.fullscreen-exit:hover {
-  color: var(--ink);
-  border-color: var(--muted);
-}
+/* No floating exit button. There was one, pinned to the top-right corner, and
+   it landed straight on top of the day bar's own controls once the top bar was
+   gone — the day bar is already up there in full screen. The toggle in the bar
+   says "Exit full screen" instead, and Escape still works. */

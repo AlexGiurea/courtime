@@ -366,13 +366,13 @@ function SchedulePage({
           onToggle={() => setNotesOpen((open) => !open)}
         />
         <button
-          className="btn"
+          className={`btn${fullScreen.active ? " primary" : ""}`}
           onClick={fullScreen.toggle}
           aria-pressed={fullScreen.active}
           title={fullScreen.active ? "Leave full screen  ·  Esc" : "Full screen  ·  F"}
         >
           {fullScreen.active ? <ShrinkIcon /> : <ExpandIcon />}
-          {fullScreen.active ? "Exit" : "Full screen"}
+          {fullScreen.active ? "Exit full screen" : "Full screen"}
         </button>
         <button className="btn" onClick={() => window.print()}>
           Print day sheet
@@ -412,24 +412,6 @@ function SchedulePage({
         jumps to today, <kbd>Ctrl</kbd> <kbd>K</kbd> jumps to any date.{" "}
         <kbd>?</kbd> shows every shortcut.
       </p>
-
-      {fullScreen.active ? (
-        <button
-          className="fullscreen-exit no-print"
-          onClick={fullScreen.exit}
-          aria-label="Leave full screen"
-          title="Leave full screen  ·  Esc"
-        >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path
-              d="m4.2 4.2 7.6 7.6M11.8 4.2l-7.6 7.6"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-            />
-          </svg>
-        </button>
-      ) : null}
 
       {notesOpen ? (
         <NotesRail date={date} note={note} onClose={() => setNotesOpen(() => false)} />

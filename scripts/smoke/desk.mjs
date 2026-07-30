@@ -52,16 +52,34 @@ check("the page never scrolls sideways", !layout.overflows);
 
 // Full screen, and both ways out of it.
 await pressBare(page, "KeyF");
-const fullOn = await page.evaluate(() => ({
-  on: document.documentElement.classList.contains("is-fullscreen"),
-  chromeGone: getComputedStyle(document.querySelector(".topbar")).display === "none",
-  exit: Boolean(document.querySelector(".fullscreen-exit")),
-}));
-check("F goes full screen", fullOn.on && fullOn.chromeGone && fullOn.exit);
-await page.evaluate(() => document.querySelector(".fullscreen-exit")?.click());
+const fullOn = await page.evaluate(() => {
+  const exit = Array.from(document.querySelectorAll(".daybar button")).find((b) =>
+    /exit full screen/i.test(b.innerText),
+  );
+  const bar = document.querySelector(".daybar")?.getBoundingClientRect();
+  return {
+    on: document.documentElement.classList.contains("is-fullscreen"),
+    chromeGone: getComputedStyle(document.querySelector(".topbar")).display === "none",
+    exit: Boolean(exit),
+    // Nothing may sit on top of the day bar's controls — a floating exit button
+    // used to, once the top bar was hidden out from under it.
+    unobstructed: bar
+      ? document.elementFromPoint(bar.right - 60, bar.top + bar.height / 2)?.closest(".daybar") !==
+        null
+      : false,
+  };
+});
+check("F goes full screen", fullOn.on && fullOn.chromeGone);
+check("the way out is visible and unobstructed", fullOn.exit && fullOn.unobstructed);
+await page.evaluate(() => {
+  const exit = Array.from(document.querySelectorAll(".daybar button")).find((b) =>
+    /exit full screen/i.test(b.innerText),
+  );
+  exit?.click();
+});
 await wait(1200);
 check(
-  "the X comes back out",
+  "the button comes back out",
   await page.evaluate(() => !document.documentElement.classList.contains("is-fullscreen")),
 );
 
