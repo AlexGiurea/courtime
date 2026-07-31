@@ -650,18 +650,27 @@
 /* The grid used to stop at `100vh - 200px` and leave a band of empty page
    under it. Now the page is a column the height of the window: the day bar and
    the hint line take what they need, the grid takes the rest. */
-/* The schedule page stops short of the bottom on purpose.
-   Tempo's dock sits in the bottom-right corner, and a grid that ran the full
-   height of the window would put its last two courts underneath the launcher —
-   so the page keeps a lane clear for it. `--dock-clear` is that lane, and it is
-   the same number the dock is positioned with. */
+/* The schedule page fills the window down to one reserved band at the bottom.
+   Tempo's dock sits in the bottom-right corner, so the grid must stop above it
+   or the last courts of the day end up underneath the launcher. But that band
+   is only 58px tall and the hint line lives *inside* it, to the left of the
+   dock — so the reserved space is occupied rather than empty. */
+.shell:has(.page.schedule) {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .page.schedule {
-  --dock-clear: 84px;
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding-bottom: 8px;
+  /* The dock is 46px tall and sits 20px off the bottom; this reserves that band
+     plus a hairline, so the grid's last row ends just above the launcher rather
+     than under it. Measured, not guessed — the smoke check asserts it. */
+  padding-bottom: 74px;
 }
 
 .page.schedule .flip-stage {
@@ -679,7 +688,7 @@
 .page.schedule .grid-wrap {
   flex: 1;
   min-height: 0;
-  max-height: calc(100vh - 54px - 108px - var(--dock-clear));
+  max-height: none;
 }
 
 /* The clinic sheet has no inner scroller of its own, so the face carries one.
@@ -688,18 +697,32 @@
   overflow-y: auto;
 }
 
+/* On the dock's own line rather than above it, so the band the launcher needs
+   isn't also a band of empty page. `right` keeps the text clear of it. */
+.page.schedule .desk-hint {
+  position: absolute;
+  left: 20px;
+  right: 230px;
+  bottom: 18px;
+  margin: 0;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .page.schedule .desk-hint {
+    right: 20px;
+    bottom: 8px;
+  }
+
+  .page.schedule {
+    padding-bottom: 74px;
+  }
+}
+
 .desk-hint {
   margin: 8px 0 0;
   font-size: 12px;
   flex: none;
-  /* Stops at the dock rather than running under it. */
-  padding-right: 200px;
-}
-
-@media (max-width: 900px) {
-  .desk-hint {
-    padding-right: 0;
-  }
 }
 
 @media print {
@@ -1063,14 +1086,10 @@ html.is-fullscreen .agent-dock {
   display: none;
 }
 
+/* No dock in full screen, so nothing to reserve for. */
 html.is-fullscreen .page.schedule {
-  --dock-clear: 0px;
   max-width: none;
-  padding: 12px 16px 8px;
-}
-
-html.is-fullscreen .page.schedule .grid-wrap {
-  max-height: calc(100vh - 84px);
+  padding: 12px 16px 10px;
 }
 
 /* No floating exit button. There was one, pinned to the top-right corner, and
